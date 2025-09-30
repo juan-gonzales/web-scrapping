@@ -1,0 +1,20 @@
+{
+  "name": "node_scraper_utp",
+  "version": "1.0.0",
+  "description": "Servicio de scraping MEL1/MEL2 con exportación y orquestación por CSV",
+  "main": "src/server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node src/server.js",
+    "migrate:up": "node src/db/run-migrations.js"
+  },
+  "dependencies": {
+    "csv-parse": "^5.5.4",
+    "dotenv": "^16.4.5",
+    "exceljs": "^4.3.0",
+    "express": "^4.19.2",
+    "multer": "^1.4.5-lts.1",
+    "pg": "^8.11.5",
+    "playwright": "^1.45.0"
+  }
+}
