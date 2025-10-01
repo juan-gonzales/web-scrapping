@@ -1,0 +1,46 @@
+{
+  "evidenceDir": "./evidence",
+  "genericCaptchaSelectors": [
+    ".captcha img",
+    "img[alt*=CAPTCHA]"
+  ],
+  "mel1": {
+    "loginUrl": "https://melvisor.utp.edu.pe/login",
+    "selectors": {
+      "user": "#username",
+      "pass": "#password",
+      "captchaImage": ".captcha img",
+      "captchaInput": "#captchaText",
+      "submit": "button[type=submit]",
+      "anchorsAfterLogin": [
+        "#menu-principal",
+        ".dashboard",
+        ".lista-cursos"
+      ]
+    },
+    "urlPatternAfterLogin": "/dashboard",
+    "timeoutsMs": {
+      "goto": 20000,
+      "anchors": 15000
+    }
+  },
+  "mel2": {
+    "loginUrl": "http://mel2.utpxpedition.com/login",
+    "selectors": {
+      "user": "#user",
+      "pass": "#pass",
+      "captchaImage": ".captcha img",
+      "captchaInput": "input[name=captcha]",
+      "submit": "button[type=submit]",
+      "anchorsAfterLogin": [
+        ".home",
+        ".menu-cursos"
+      ]
+    },
+    "urlPatternAfterLogin": "/home",
+    "timeoutsMs": {
+      "goto": 20000,
+      "anchors": 15000
+    }
+  }
+}

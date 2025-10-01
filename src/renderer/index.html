@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <title>MEL Authenticator</title>
+    <style>
+      body {
+        margin: 0;
+        font-family: Arial, Helvetica, sans-serif;
+        background: #f4f6f8;
+        color: #333;
+      }
+      header {
+        background: #1f2933;
+        color: #fff;
+        padding: 16px 24px;
+      }
+      main {
+        padding: 24px;
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+        gap: 16px;
+      }
+      .status-card {
+        background: #fff;
+        border-radius: 8px;
+        padding: 16px;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+      .status-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+      .badge {
+        padding: 4px 8px;
+        border-radius: 12px;
+        font-size: 12px;
+        font-weight: bold;
+        color: #fff;
+      }
+      .badge.green {
+        background: #34a853;
+      }
+      .badge.red {
+        background: #d93025;
+      }
+      .thumbnail {
+        width: 100%;
+        max-height: 180px;
+        object-fit: cover;
+        border: 1px solid #e0e0e0;
+        border-radius: 4px;
+      }
+      .anchors-list {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+      }
+      .anchors-list li {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 14px;
+      }
+      .modal {
+        position: fixed;
+        inset: 0;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        background: rgba(0, 0, 0, 0.45);
+        z-index: 1000;
+      }
+      .modal.active {
+        display: flex;
+      }
+      .modal-content {
+        background: #fff;
+        padding: 24px;
+        border-radius: 8px;
+        width: 400px;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+      .modal-content h2 {
+        margin: 0;
+      }
+      label {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        font-size: 14px;
+      }
+      input {
+        padding: 8px;
+        border: 1px solid #cbd5e1;
+        border-radius: 4px;
+        font-size: 14px;
+      }
+      button {
+        padding: 10px 16px;
+        background: #2563eb;
+        color: #fff;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 14px;
+      }
+      button:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+      }
+      .captcha-section {
+        display: none;
+        flex-direction: column;
+        gap: 8px;
+      }
+      .captcha-section.active {
+        display: flex;
+      }
+      .captcha-image {
+        max-width: 100%;
+        border: 1px solid #d1d5db;
+      }
+      .error-message {
+        color: #d93025;
+        font-size: 13px;
+      }
+      .logs-container {
+        grid-column: 1 / -1;
+        background: #fff;
+        padding: 16px;
+        border-radius: 8px;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+        max-height: 200px;
+        overflow-y: auto;
+        white-space: pre-wrap;
+        font-family: Consolas, 'Courier New', monospace;
+        font-size: 12px;
+      }
+      .card-footer {
+        display: flex;
+        justify-content: flex-end;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>MEL Autenticador</h1>
+    </header>
+    <main>
+      <section class="status-card" data-app="mel1">
+        <div class="status-header">
+          <h2>MEL 1</h2>
+          <span class="badge red">Pendiente</span>
+        </div>
+        <div class="status-body">
+          <p><strong>Título:</strong> <span class="title">-</span></p>
+          <p><strong>URL:</strong> <span class="url">-</span></p>
+          <img class="thumbnail" alt="Captura MEL 1" />
+          <ul class="anchors-list"></ul>
+        </div>
+        <div class="card-footer">
+          <button class="view-screenshot" disabled>Ver captura</button>
+        </div>
+      </section>
+      <section class="status-card" data-app="mel2">
+        <div class="status-header">
+          <h2>MEL 2</h2>
+          <span class="badge red">Pendiente</span>
+        </div>
+        <div class="status-body">
+          <p><strong>Título:</strong> <span class="title">-</span></p>
+          <p><strong>URL:</strong> <span class="url">-</span></p>
+          <img class="thumbnail" alt="Captura MEL 2" />
+          <ul class="anchors-list"></ul>
+        </div>
+        <div class="card-footer">
+          <button class="view-screenshot" disabled>Ver captura</button>
+        </div>
+      </section>
+      <section class="logs-container" id="logs"></section>
+    </main>
+
+    <div class="modal active" id="mel1Modal">
+      <div class="modal-content">
+        <h2>Credenciales MEL 1</h2>
+        <form id="mel1Form">
+          <label>
+            Usuario
+            <input type="text" name="user" required />
+          </label>
+          <label>
+            Contraseña
+            <input type="password" name="pass" required />
+          </label>
+          <div class="captcha-section" id="mel1Captcha">
+            <img class="captcha-image" alt="CAPTCHA MEL 1" />
+            <label>
+              Texto del CAPTCHA
+              <input type="text" name="captchaText" autocomplete="off" />
+            </label>
+          </div>
+          <p class="error-message" id="mel1Error"></p>
+          <button type="submit">Entrar</button>
+        </form>
+      </div>
+    </div>
+
+    <div class="modal" id="mel2Modal">
+      <div class="modal-content">
+        <h2>Credenciales MEL 2</h2>
+        <form id="mel2Form">
+          <label>
+            Usuario
+            <input type="text" name="user" required />
+          </label>
+          <label>
+            Contraseña
+            <input type="password" name="pass" required />
+          </label>
+          <div class="captcha-section" id="mel2Captcha">
+            <img class="captcha-image" alt="CAPTCHA MEL 2" />
+            <label>
+              Texto del CAPTCHA
+              <input type="text" name="captchaText" autocomplete="off" />
+            </label>
+          </div>
+          <p class="error-message" id="mel2Error"></p>
+          <button type="submit">Entrar</button>
+        </form>
+      </div>
+    </div>
+
+    <script type="module" src="../../dist/renderer/renderer.js"></script>
+  </body>
+</html>
