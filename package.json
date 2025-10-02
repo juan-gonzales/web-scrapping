@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "ts-node-dev --respawn --transpile-only scripts/dev.ts",
     "start": "electron .",
-    "build": "tsc"
+    "build": "tsc && npm run copy-assets",
+    "copy-assets": "mkdir -p dist/renderer && cp src/renderer/index.html dist/renderer/ && mkdir -p dist/config && cp src/config/app.json dist/config/ 2>/dev/null || true"
   },
   "dependencies": {
     "electron": "^28.2.0",

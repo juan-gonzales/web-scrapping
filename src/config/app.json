@@ -1,0 +1,44 @@
+{
+  "evidenceDir": "./evidence",
+  "genericCaptchaSelectors": [
+    ".captcha img",
+    "img[alt*=CAPTCHA]",
+    "#imgCaptcha"
+  ],
+  "mel1": {
+    "loginUrl": "https://melvisor.utp.edu.pe",
+    "selectors": {
+      "user": "#UserName",
+      "pass": "#Password",
+      "captchaImage": "#imgCaptcha",
+      "captchaInput": "#Captcha",
+      "submit": "button[type=submit]",
+      "anchorsAfterLogin": [
+        "#txtCodigoAlumnoSimulacion"
+      ]
+    },
+    "urlPatternAfterLogin": "/Seguridad/LoginAdmin",
+    "timeoutsMs": {
+      "goto": 10000,
+      "anchors": 8000
+    }
+  },
+  "mel2": {
+    "loginUrl": "http://mel2.utpxpedition.com",
+    "selectors": {
+      "user": "#studentCode",
+      "pass": "#password",
+      "captchaImage": null,
+      "captchaInput": null,
+      "submit": "#kc-login",
+      "anchorsAfterLogin": [
+        "input[placeholder*='código del alumno']"
+      ]
+    },
+    "urlPatternAfterLogin": "/simulator",
+    "timeoutsMs": {
+      "goto": 8000,
+      "anchors": 6000
+    }
+  }
+}
