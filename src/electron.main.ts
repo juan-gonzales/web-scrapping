@@ -32,7 +32,7 @@ async function createWindow() {
       preload: preloadPath,
     },
   });
-
+  mainWindow.maximize();
   const htmlPath = resolveRendererHtml();
   await mainWindow.loadFile(htmlPath);
 

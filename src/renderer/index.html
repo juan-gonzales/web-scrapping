@@ -2,237 +2,716 @@
 <html lang="es">
   <head>
     <meta charset="UTF-8" />
-    <title>MEL Authenticator</title>
+    <title>MEL Processor - Sistema de Matrícula Automática</title>
     <style>
-      body {
+      * {
         margin: 0;
-        font-family: Arial, Helvetica, sans-serif;
-        background: #f4f6f8;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      
+      body {
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         color: #333;
-      }
-      header {
-        background: #1f2933;
-        color: #fff;
-        padding: 16px 24px;
-      }
-      main {
-        padding: 24px;
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-        gap: 16px;
-      }
-      .status-card {
-        background: #fff;
-        border-radius: 8px;
-        padding: 16px;
-        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+        min-height: 100vh;
         display: flex;
         flex-direction: column;
-        gap: 8px;
       }
-      .status-header {
+
+      /* HEADER */
+      .header {
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(10px);
+        padding: 16px 24px;
+        box-shadow: 0 2px 20px rgba(0, 0, 0, 0.1);
+        border-bottom: 3px solid #667eea;
+      }
+
+      .header-content {
         display: flex;
-        align-items: center;
         justify-content: space-between;
-      }
-      .badge {
-        padding: 4px 8px;
-        border-radius: 12px;
-        font-size: 12px;
-        font-weight: bold;
-        color: #fff;
-      }
-      .badge.green {
-        background: #34a853;
-      }
-      .badge.red {
-        background: #d93025;
-      }
-      .thumbnail {
-        width: 100%;
-        max-height: 180px;
-        object-fit: cover;
-        border: 1px solid #e0e0e0;
-        border-radius: 4px;
-      }
-      .anchors-list {
-        list-style: none;
-        padding: 0;
-        margin: 0;
-      }
-      .anchors-list li {
-        display: flex;
         align-items: center;
-        gap: 6px;
-        font-size: 14px;
+        max-width: 1400px;
+        margin: 0 auto;
       }
-      .modal {
-        position: fixed;
-        inset: 0;
-        display: none;
+
+      .header h1 {
+        color: #2d3748;
+        font-size: 24px;
+        font-weight: 600;
+      }
+
+      .header-stats {
+        display: flex;
+        gap: 20px;
+        align-items: center;
+      }
+
+      .stat-item {
+        text-align: center;
+      }
+
+      .stat-number {
+        display: block;
+        font-size: 24px;
+        font-weight: bold;
+        color: #667eea;
+      }
+
+      .stat-label {
+        font-size: 12px;
+        color: #666;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+
+      /* MAIN CONTENT */
+      .main-content {
+        flex: 1;
+        padding: 20px;
+        max-width: 1400px;
+        margin: 0 auto;
+        width: 100%;
+        display: flex; /* ✅ AGREGAR */
+  flex-direction: column; /* ✅ AGREGAR */
+      }
+
+      /* AUTH STATUS SECTION */
+      .auth-section {
+        margin-bottom: 24px;
+      }
+
+      .auth-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 16px;
+        margin-bottom: 20px;
+      }
+
+      .auth-card {
+        background: white;
+        border-radius: 12px;
+        padding: 20px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+        border: 2px solid transparent;
+        transition: all 0.3s ease;
+      }
+
+      .auth-card.authenticated {
+        border-color: #48bb78;
+        background: linear-gradient(135deg, #f0fff4 0%, #c6f6d5 100%);
+      }
+
+      .auth-card.error {
+        border-color: #f56565;
+        background: linear-gradient(135deg, #fff5f5 0%, #fed7d7 100%);
+      }
+
+      .auth-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 12px;
+      }
+
+      .auth-title {
+        font-size: 18px;
+        font-weight: 600;
+        color: #2d3748;
+      }
+
+      .status-badge {
+        padding: 6px 12px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+
+      .status-badge.pending {
+        background: #fed7026;
+        color: #744210;
+      }
+
+      .status-badge.authenticated {
+        background: #48bb78;
+        color: white;
+      }
+
+      .status-badge.error {
+        background: #f56565;
+        color: white;
+      }
+
+      .auth-info {
+        font-size: 14px;
+        color: #666;
+        margin-bottom: 8px;
+      }
+
+      .login-btn {
+        width: 100%;
+        padding: 10px;
+        background: #667eea;
+        color: white;
+        border: none;
+        border-radius: 8px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+      }
+
+      .login-btn:hover:not(:disabled) {
+        background: #5a67d8;
+        transform: translateY(-2px);
+      }
+
+      .login-btn:disabled {
+        background: #cbd5e0;
+        cursor: not-allowed;
+        transform: none;
+      }
+
+      /* PROGRESS SECTION */
+      .progress-section {
+        background: white;
+        border-radius: 12px;
+        padding: 24px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+        margin-bottom: 24px;
+      }
+
+      .progress-header {
+        display: flex;
+        justify-content: between;
+        align-items: center;
+        margin-bottom: 20px;
+      }
+
+      .progress-title {
+        font-size: 20px;
+        font-weight: 600;
+        color: #2d3748;
+      }
+
+      .progress-controls {
+        display: flex;
+        gap: 10px;
+      }
+
+      .control-btn {
+        padding: 8px 16px;
+        border: 2px solid #667eea;
+        background: white;
+        color: #667eea;
+        border-radius: 6px;
+        cursor: pointer;
+        font-weight: 500;
+        transition: all 0.3s ease;
+      }
+
+      .control-btn:hover {
+        background: #667eea;
+        color: white;
+      }
+
+      .control-btn.primary {
+        background: #667eea;
+        color: white;
+      }
+
+      .control-btn.primary:hover {
+        background: #5a67d8;
+      }
+
+      .progress-bar-container {
+        background: #e2e8f0;
+        border-radius: 10px;
+        height: 20px;
+        overflow: hidden;
+        margin-bottom: 16px;
+      }
+
+      .progress-bar {
+        height: 100%;
+        background: linear-gradient(90deg, #48bb78 0%, #38a169 100%);
+        transition: width 0.5s ease;
+        display: flex;
         align-items: center;
         justify-content: center;
-        background: rgba(0, 0, 0, 0.45);
-        z-index: 1000;
+        color: white;
+        font-size: 12px;
+        font-weight: 600;
       }
-      .modal.active {
+
+      .current-processing {
         display: flex;
-      }
-      .modal-content {
-        background: #fff;
-        padding: 24px;
+        gap: 20px;
+        align-items: center;
+        padding: 16px;
+        background: #f7fafc;
         border-radius: 8px;
-        width: 400px;
+        border-left: 4px solid #667eea;
+      }
+
+      .processing-info {
+        flex: 1;
+      }
+
+      .processing-code {
+        font-size: 18px;
+        font-weight: 600;
+        color: #2d3748;
+        margin-bottom: 4px;
+      }
+
+      .processing-status {
+        font-size: 14px;
+        color: #666;
+      }
+
+      .processing-systems {
         display: flex;
-        flex-direction: column;
         gap: 12px;
       }
-      .modal-content h2 {
-        margin: 0;
+
+      .system-indicator {
+        padding: 8px 12px;
+        border-radius: 6px;
+        font-size: 12px;
+        font-weight: 600;
+        text-align: center;
+        min-width: 80px;
       }
-      label {
+
+      .system-indicator.processing {
+        background: #fed7026;
+        color: #744210;
+        animation: pulse 2s infinite;
+      }
+
+      .system-indicator.completed {
+        background: #48bb78;
+        color: white;
+      }
+
+      .system-indicator.pending {
+        background: #e2e8f0;
+        color: #666;
+      }
+
+      .system-indicator.error {
+        background: #f56565;
+        color: white;
+      }
+
+      @keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.6; }
+      }
+
+      /* LOGS SECTION */
+      .logs-section {
+        background: #1a202c;
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+        flex: 1; /* ✅ AGREGAR ESTA LÍNEA */
+  display: flex; /* ✅ AGREGAR */
+  flex-direction: column; /* ✅ AGREGAR */
+      }
+
+      .logs-header {
+        background: #2d3748;
+        padding: 16px 20px;
+        border-bottom: 1px solid #4a5568;
         display: flex;
-        flex-direction: column;
-        gap: 4px;
-        font-size: 14px;
+        justify-content: space-between;
+        align-items: center;
       }
-      input {
-        padding: 8px;
-        border: 1px solid #cbd5e1;
-        border-radius: 4px;
-        font-size: 14px;
+
+      .logs-title {
+        color: #e2e8f0;
+        font-weight: 600;
+        font-size: 16px;
       }
-      button {
-        padding: 10px 16px;
-        background: #2563eb;
-        color: #fff;
+
+      .logs-controls {
+        display: flex;
+        gap: 8px;
+      }
+
+      .log-filter {
+        padding: 4px 8px;
+        background: #4a5568;
+        color: #e2e8f0;
         border: none;
         border-radius: 4px;
         cursor: pointer;
-        font-size: 14px;
-      }
-      button:disabled {
-        opacity: 0.6;
-        cursor: not-allowed;
-      }
-      .captcha-section {
-        display: none;
-        flex-direction: column;
-        gap: 8px;
-      }
-      .captcha-section.active {
-        display: flex;
-      }
-      .captcha-image {
-        max-width: 100%;
-        border: 1px solid #d1d5db;
-      }
-      .error-message {
-        color: #d93025;
-        font-size: 13px;
-      }
-      .logs-container {
-        grid-column: 1 / -1;
-        background: #fff;
-        padding: 16px;
-        border-radius: 8px;
-        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
-        max-height: 200px;
-        overflow-y: auto;
-        white-space: pre-wrap;
-        font-family: Consolas, 'Courier New', monospace;
         font-size: 12px;
       }
-      .card-footer {
-        display: flex;
-        justify-content: flex-end;
+
+      .log-filter.active {
+        background: #667eea;
       }
+
+      .logs-content {
+        flex: 1; /* ✅ CAMBIAR de height: 300px a flex: 1 */
+        overflow-y: auto;
+        padding: 16px;
+        background: #1a202c;
+        font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+        font-size: 13px;
+        line-height: 1.5;
+      }
+
+      .log-entry {
+        margin-bottom: 4px;
+        padding: 2px 0;
+        display: flex;
+        align-items: flex-start;
+        gap: 8px;
+      }
+
+      .log-time {
+        color: #718096;
+        min-width: 80px;
+        font-size: 11px;
+      }
+
+      .log-app {
+        color: #667eea;
+        min-width: 50px;
+        font-weight: 600;
+        text-transform: uppercase;
+        font-size: 11px;
+      }
+
+      .log-message {
+        color: #e2e8f0;
+        flex: 1;
+      }
+
+      .log-entry.error .log-message {
+        color: #fc8181;
+      }
+
+      .log-entry.success .log-message {
+        color: #68d391;
+      }
+
+      .log-entry.warning .log-message {
+        color: #f6e05e;
+      }
+
+      /* MODAL STYLES */
+      .modal {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.5);
+        backdrop-filter: blur(4px);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+      }
+
+      .modal.active {
+        display: flex;
+      }
+
+      .modal-content {
+        background: white;
+        border-radius: 12px;
+        padding: 32px;
+        width: 90%;
+        max-width: 400px;
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+      }
+
+      .modal-title {
+        font-size: 24px;
+        font-weight: 600;
+        color: #2d3748;
+        margin-bottom: 24px;
+        text-align: center;
+      }
+
+      .form-group {
+        margin-bottom: 20px;
+      }
+
+      .form-label {
+        display: block;
+        font-weight: 500;
+        color: #4a5568;
+        margin-bottom: 6px;
+      }
+
+      .form-input {
+        width: 100%;
+        padding: 12px;
+        border: 2px solid #e2e8f0;
+        border-radius: 8px;
+        font-size: 16px;
+        transition: border-color 0.3s ease;
+      }
+
+      .form-input:focus {
+        outline: none;
+        border-color: #667eea;
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+      }
+
+      .captcha-section {
+        display: none;
+        margin-bottom: 20px;
+      }
+
+      .captcha-section.active {
+        display: block;
+      }
+
+      .captcha-image {
+        width: 100%;
+        border: 2px solid #e2e8f0;
+        border-radius: 8px;
+        margin-bottom: 12px;
+      }
+
+      .submit-btn {
+        width: 100%;
+        padding: 14px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border: none;
+        border-radius: 8px;
+        font-size: 16px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+      }
+
+      .submit-btn:hover:not(:disabled) {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
+      }
+
+      .submit-btn:disabled {
+        background: #cbd5e0;
+        cursor: not-allowed;
+        transform: none;
+      }
+
+      .error-message {
+        color: #f56565;
+        font-size: 14px;
+        margin-top: 8px;
+        text-align: center;
+      }
+
+      /* RESPONSIVE */
+      @media (max-width: 768px) {
+        .header-content {
+          flex-direction: column;
+          gap: 12px;
+        }
+
+        .header-stats {
+          gap: 15px;
+        }
+
+        .auth-grid {
+          grid-template-columns: 1fr;
+        }
+
+        .current-processing {
+          flex-direction: column;
+          align-items: flex-start;
+          gap: 12px;
+        }
+
+        .processing-systems {
+          width: 100%;
+          justify-content: space-between;
+        }
+      }
+      .badge.green {
+  background: #48bb78;
+  color: white;
+}
+
+.badge.red {
+  background: #f56565;
+  color: white;
+}
+
+#logs {
+  font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+  font-size: 13px;
+  line-height: 1.5;
+  color: #e2e8f0;
+  white-space: pre-wrap;
+}
     </style>
   </head>
   <body>
-    <header>
-      <h1>MEL Autenticador</h1>
+    <!-- HEADER -->
+    <header class="header">
+      <div class="header-content">
+        <h1>🎓 MEL Processor</h1>
+        <div class="header-stats">
+          <div class="stat-item">
+            <span class="stat-number" id="totalCodes">10</span>
+            <span class="stat-label">Códigos Total</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-number" id="processedCodes">0</span>
+            <span class="stat-label">Procesados</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-number" id="successRate">0%</span>
+            <span class="stat-label">Éxito</span>
+          </div>
+        </div>
+      </div>
     </header>
-    <main>
-      <section class="status-card" data-app="mel1">
-        <div class="status-header">
-          <h2>MEL 1</h2>
-          <span class="badge red">Pendiente</span>
-        </div>
-        <div class="status-body">
-          <p><strong>Título:</strong> <span class="title">-</span></p>
-          <p><strong>URL:</strong> <span class="url">-</span></p>
-          <img class="thumbnail" alt="Captura MEL 1" />
-          <ul class="anchors-list"></ul>
-        </div>
-        <div class="card-footer">
-          <button class="view-screenshot" disabled>Ver captura</button>
+
+    <!-- MAIN CONTENT -->
+    <main class="main-content">
+      <!-- AUTH STATUS SECTION -->
+      <section class="auth-section">
+        <div class="auth-grid">
+          <!-- MEL 1 -->
+          <div class="auth-card status-card" data-app="mel1" id="mel1Card">
+            <div class="auth-header">
+              <h3 class="auth-title title">🌐 MEL 1 - Melvisor</h3>
+              <span class="status-badge badge pending" id="mel1Badge">Pendiente</span>
+            </div>
+            <div class="auth-info" id="mel1Info">Sistema de matrícula principal</div>
+            <div class="url" style="display: none;"></div>
+            <img class="thumbnail" style="display: none;" />
+            <ul class="anchors-list" style="display: none;"></ul>
+            <button class="view-screenshot" style="display: none;" disabled>Ver Screenshot</button>
+            <button class="login-btn" id="mel1LoginBtn">Conectar MEL 1</button>
+          </div>
+
+          <!-- MEL 2 -->
+          <div class="auth-card status-card" data-app="mel2" id="mel2Card">
+            <div class="auth-header">
+              <h3 class="auth-title title">🚀 MEL 2 - UTPXpedition</h3>
+              <span class="status-badge badge pending" id="mel2Badge">Esperando MEL 1</span>
+            </div>
+            <div class="auth-info" id="mel2Info">Sistema alternativo de matrícula</div>
+            <div class="url" style="display: none;"></div>
+            <img class="thumbnail" style="display: none;" />
+            <ul class="anchors-list" style="display: none;"></ul>
+            <button class="view-screenshot" style="display: none;" disabled>Ver Screenshot</button>
+            <button class="login-btn" id="mel2LoginBtn" disabled>Conectar MEL 2</button>
+          </div>
         </div>
       </section>
-      <section class="status-card" data-app="mel2">
-        <div class="status-header">
-          <h2>MEL 2</h2>
-          <span class="badge red">Pendiente</span>
+
+      <!-- PROGRESS SECTION -->
+      <section class="progress-section" id="progressSection" style="display: none;">
+        <div class="progress-header">
+          <h2 class="progress-title">📊 Progreso de Procesamiento</h2>
+          <div class="progress-controls">
+            <button class="control-btn" id="pauseBtn">⏸️ Pausar</button>
+            <button class="control-btn" id="exportBtn">📄 Exportar</button>
+          </div>
         </div>
-        <div class="status-body">
-          <p><strong>Título:</strong> <span class="title">-</span></p>
-          <p><strong>URL:</strong> <span class="url">-</span></p>
-          <img class="thumbnail" alt="Captura MEL 2" />
-          <ul class="anchors-list"></ul>
+        
+        <div class="progress-bar-container">
+          <div class="progress-bar" id="progressBar" style="width: 0%">0%</div>
         </div>
-        <div class="card-footer">
-          <button class="view-screenshot" disabled>Ver captura</button>
+
+        <div class="current-processing" id="currentProcessing" style="display: none;">
+          <div class="processing-info">
+            <div class="processing-code" id="currentCode">-</div>
+            <div class="processing-status" id="currentStatus">Preparando...</div>
+          </div>
+          <div class="processing-systems">
+            <div class="system-indicator pending" id="mel1Indicator">MEL 1</div>
+            <div class="system-indicator pending" id="mel2Indicator">MEL 2</div>
+          </div>
         </div>
       </section>
-      <section class="logs-container" id="logs"></section>
+
+      <!-- LOGS SECTION -->
+      <section class="logs-section">
+        <div class="logs-header">
+          <h3 class="logs-title">📋 Logs del Sistema</h3>
+          <div class="logs-controls">
+            <button class="log-filter active" data-filter="all">Todos</button>
+            <button class="log-filter" data-filter="mel1">MEL1</button>
+            <button class="log-filter" data-filter="mel2">MEL2</button>
+            <button class="log-filter" data-filter="error">Errores</button>
+          </div>
+        </div>
+        <div class="logs-content" id="logsContent">
+          <div class="log-entry">
+            <span class="log-time">00:00:00</span>
+            <span class="log-app">SYS</span>
+            <span class="log-message">💻 Sistema iniciado - Esperando credenciales...</span>
+          </div>
+          <div id="logs"></div> <!-- ✅ AGREGAR ESTA LÍNEA -->
+        </div>
+      </section>
     </main>
 
-    <div class="modal active" id="mel1Modal">
+    <!-- MODALS -->
+    <div class="modal" id="mel1Modal">
       <div class="modal-content">
-        <h2>Credenciales MEL 1</h2>
+        <h2 class="modal-title">🔐 Credenciales MEL 1</h2>
         <form id="mel1Form">
-          <label>
-            Usuario
-            <input type="text" name="user" required />
-          </label>
-          <label>
-            Contraseña
-            <input type="password" name="pass" required />
-          </label>
+          <div class="form-group">
+            <label class="form-label">Usuario</label>
+            <input type="text" name="user" class="form-input" required />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Contraseña</label>
+            <input type="password" name="pass" class="form-input" required />
+          </div>
           <div class="captcha-section" id="mel1Captcha">
             <img class="captcha-image" alt="CAPTCHA MEL 1" />
-            <label>
-              Texto del CAPTCHA
-              <input type="text" name="captchaText" autocomplete="off" />
-            </label>
+            <div class="form-group">
+              <label class="form-label">Texto del CAPTCHA</label>
+              <input type="text" name="captchaText" class="form-input" autocomplete="off" />
+            </div>
           </div>
           <p class="error-message" id="mel1Error"></p>
-          <button type="submit">Entrar</button>
+          <button type="submit" class="submit-btn">🚀 Conectar</button>
         </form>
       </div>
     </div>
 
     <div class="modal" id="mel2Modal">
       <div class="modal-content">
-        <h2>Credenciales MEL 2</h2>
+        <h2 class="modal-title">🔐 Credenciales MEL 2</h2>
         <form id="mel2Form">
-          <label>
-            Usuario
-            <input type="text" name="user" required />
-          </label>
-          <label>
-            Contraseña
-            <input type="password" name="pass" required />
-          </label>
+          <div class="form-group">
+            <label class="form-label">Usuario</label>
+            <input type="text" name="user" class="form-input" required />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Contraseña</label>
+            <input type="password" name="pass" class="form-input" required />
+          </div>
           <div class="captcha-section" id="mel2Captcha">
             <img class="captcha-image" alt="CAPTCHA MEL 2" />
-            <label>
-              Texto del CAPTCHA
-              <input type="text" name="captchaText" autocomplete="off" />
-            </label>
+            <div class="form-group">
+              <label class="form-label">Texto del CAPTCHA</label>
+              <input type="text" name="captchaText" class="form-input" autocomplete="off" />
+            </div>
           </div>
           <p class="error-message" id="mel2Error"></p>
-          <button type="submit">Entrar</button>
+          <button type="submit" class="submit-btn">🚀 Conectar</button>
         </form>
       </div>
     </div>
