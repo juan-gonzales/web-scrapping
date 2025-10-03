@@ -2,7 +2,7 @@
 <html lang="es">
   <head>
     <meta charset="UTF-8" />
-    <title>MEL Processor - Sistema de Matrícula Automática</title>
+    <title>MEL Comparator - Análisis Comparativo de Sistemas</title>
     <style>
       * {
         margin: 0;
@@ -73,8 +73,8 @@
         max-width: 1400px;
         margin: 0 auto;
         width: 100%;
-        display: flex; /* ✅ AGREGAR */
-  flex-direction: column; /* ✅ AGREGAR */
+        display: flex;
+        flex-direction: column;
       }
 
       /* AUTH STATUS SECTION */
@@ -131,7 +131,7 @@
       }
 
       .status-badge.pending {
-        background: #fed7026;
+        background: #fed726;
         color: #744210;
       }
 
@@ -185,7 +185,7 @@
 
       .progress-header {
         display: flex;
-        justify-content: between;
+        justify-content: space-between;
         align-items: center;
         margin-bottom: 20px;
       }
@@ -287,7 +287,7 @@
       }
 
       .system-indicator.processing {
-        background: #fed7026;
+        background: #fed726;
         color: #744210;
         animation: pulse 2s infinite;
       }
@@ -318,9 +318,9 @@
         border-radius: 12px;
         overflow: hidden;
         box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
-        flex: 1; /* ✅ AGREGAR ESTA LÍNEA */
-  display: flex; /* ✅ AGREGAR */
-  flex-direction: column; /* ✅ AGREGAR */
+        flex: 1;
+        display: flex;
+        flex-direction: column;
       }
 
       .logs-header {
@@ -351,6 +351,7 @@
         border-radius: 4px;
         cursor: pointer;
         font-size: 12px;
+        transition: all 0.3s ease;
       }
 
       .log-filter.active {
@@ -358,7 +359,7 @@
       }
 
       .logs-content {
-        flex: 1; /* ✅ CAMBIAR de height: 300px a flex: 1 */
+        flex: 1;
         overflow-y: auto;
         padding: 16px;
         background: #1a202c;
@@ -541,42 +542,43 @@
           justify-content: space-between;
         }
       }
+      
       .badge.green {
-  background: #48bb78;
-  color: white;
-}
+        background: #48bb78;
+        color: white;
+      }
 
-.badge.red {
-  background: #f56565;
-  color: white;
-}
+      .badge.red {
+        background: #f56565;
+        color: white;
+      }
 
-#logs {
-  font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
-  font-size: 13px;
-  line-height: 1.5;
-  color: #e2e8f0;
-  white-space: pre-wrap;
-}
+      #logs {
+        font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+        font-size: 13px;
+        line-height: 1.5;
+        color: #e2e8f0;
+        white-space: pre-wrap;
+      }
     </style>
   </head>
   <body>
     <!-- HEADER -->
     <header class="header">
       <div class="header-content">
-        <h1>🎓 MEL Processor</h1>
+        <h1>⚖️ MEL Comparator</h1>
         <div class="header-stats">
           <div class="stat-item">
-            <span class="stat-number" id="totalCodes">10</span>
-            <span class="stat-label">Códigos Total</span>
+            <span class="stat-number" id="totalCodes">0</span>
+            <span class="stat-label">Estudiantes</span>
           </div>
           <div class="stat-item">
             <span class="stat-number" id="processedCodes">0</span>
-            <span class="stat-label">Procesados</span>
+            <span class="stat-label">Analizados</span>
           </div>
           <div class="stat-item">
             <span class="stat-number" id="successRate">0%</span>
-            <span class="stat-label">Éxito</span>
+            <span class="stat-label">Concordancia</span>
           </div>
         </div>
       </div>
@@ -590,29 +592,29 @@
           <!-- MEL 1 -->
           <div class="auth-card status-card" data-app="mel1" id="mel1Card">
             <div class="auth-header">
-              <h3 class="auth-title title">🌐 MEL 1 - Melvisor</h3>
-              <span class="status-badge badge pending" id="mel1Badge">Pendiente</span>
+              <h3 class="auth-title title">🔵 MEL 1 - Sistema Clásico</h3>
+              <span class="status-badge badge pending" id="mel1Badge">Desconectado</span>
             </div>
-            <div class="auth-info" id="mel1Info">Sistema de matrícula principal</div>
+            <div class="auth-info" id="mel1Info">Sistema legacy de matrícula</div>
             <div class="url" style="display: none;"></div>
             <img class="thumbnail" style="display: none;" />
             <ul class="anchors-list" style="display: none;"></ul>
             <button class="view-screenshot" style="display: none;" disabled>Ver Screenshot</button>
-            <button class="login-btn" id="mel1LoginBtn">Conectar MEL 1</button>
+            <button class="login-btn" id="mel1LoginBtn">🔗 Conectar Sistema A</button>
           </div>
 
           <!-- MEL 2 -->
           <div class="auth-card status-card" data-app="mel2" id="mel2Card">
             <div class="auth-header">
-              <h3 class="auth-title title">🚀 MEL 2 - UTPXpedition</h3>
-              <span class="status-badge badge pending" id="mel2Badge">Esperando MEL 1</span>
+              <h3 class="auth-title title">🟣 MEL 2 - Sistema Moderno</h3>
+              <span class="status-badge badge pending" id="mel2Badge">En Espera</span>
             </div>
-            <div class="auth-info" id="mel2Info">Sistema alternativo de matrícula</div>
+            <div class="auth-info" id="mel2Info">Sistema actualizado UTPXpedition</div>
             <div class="url" style="display: none;"></div>
             <img class="thumbnail" style="display: none;" />
             <ul class="anchors-list" style="display: none;"></ul>
             <button class="view-screenshot" style="display: none;" disabled>Ver Screenshot</button>
-            <button class="login-btn" id="mel2LoginBtn" disabled>Conectar MEL 2</button>
+            <button class="login-btn" id="mel2LoginBtn" disabled>🔗 Conectar Sistema B</button>
           </div>
         </div>
       </section>
@@ -620,10 +622,10 @@
       <!-- PROGRESS SECTION -->
       <section class="progress-section" id="progressSection" style="display: none;">
         <div class="progress-header">
-          <h2 class="progress-title">📊 Progreso de Procesamiento</h2>
+          <h2 class="progress-title">📊 Análisis Comparativo en Progreso</h2>
           <div class="progress-controls">
             <button class="control-btn" id="pauseBtn">⏸️ Pausar</button>
-            <button class="control-btn" id="exportBtn">📄 Exportar</button>
+            <button class="control-btn" id="exportBtn">📋 Exportar Reporte</button>
           </div>
         </div>
         
@@ -634,11 +636,11 @@
         <div class="current-processing" id="currentProcessing" style="display: none;">
           <div class="processing-info">
             <div class="processing-code" id="currentCode">-</div>
-            <div class="processing-status" id="currentStatus">Preparando...</div>
+            <div class="processing-status" id="currentStatus">Preparando análisis comparativo...</div>
           </div>
           <div class="processing-systems">
-            <div class="system-indicator pending" id="mel1Indicator">MEL 1</div>
-            <div class="system-indicator pending" id="mel2Indicator">MEL 2</div>
+            <div class="system-indicator pending" id="mel1Indicator">Sistema A</div>
+            <div class="system-indicator pending" id="mel2Indicator">Sistema B</div>
           </div>
         </div>
       </section>
@@ -646,21 +648,21 @@
       <!-- LOGS SECTION -->
       <section class="logs-section">
         <div class="logs-header">
-          <h3 class="logs-title">📋 Logs del Sistema</h3>
+          <h3 class="logs-title">🔍 Análisis Comparativo en Tiempo Real</h3>
           <div class="logs-controls">
             <button class="log-filter active" data-filter="all">Todos</button>
-            <button class="log-filter" data-filter="mel1">MEL1</button>
-            <button class="log-filter" data-filter="mel2">MEL2</button>
-            <button class="log-filter" data-filter="error">Errores</button>
+            <button class="log-filter" data-filter="mel1">Sistema A</button>
+            <button class="log-filter" data-filter="mel2">Sistema B</button>
+            <button class="log-filter" data-filter="error">Diferencias</button>
           </div>
         </div>
         <div class="logs-content" id="logsContent">
           <div class="log-entry">
             <span class="log-time">00:00:00</span>
             <span class="log-app">SYS</span>
-            <span class="log-message">💻 Sistema iniciado - Esperando credenciales...</span>
+            <span class="log-message">🔧 Comparador MEL iniciado - Esperando conexión a ambos sistemas...</span>
           </div>
-          <div id="logs"></div> <!-- ✅ AGREGAR ESTA LÍNEA -->
+          <div id="logs"></div>
         </div>
       </section>
     </main>
@@ -668,10 +670,10 @@
     <!-- MODALS -->
     <div class="modal" id="mel1Modal">
       <div class="modal-content">
-        <h2 class="modal-title">🔐 Credenciales MEL 1</h2>
+        <h2 class="modal-title">🔵 Sistema A - MEL Clásico</h2>
         <form id="mel1Form">
           <div class="form-group">
-            <label class="form-label">Usuario</label>
+            <label class="form-label">Usuario del Sistema</label>
             <input type="text" name="user" class="form-input" required />
           </div>
           <div class="form-group">
@@ -679,24 +681,24 @@
             <input type="password" name="pass" class="form-input" required />
           </div>
           <div class="captcha-section" id="mel1Captcha">
-            <img class="captcha-image" alt="CAPTCHA MEL 1" />
+            <img class="captcha-image" alt="CAPTCHA Sistema A" />
             <div class="form-group">
-              <label class="form-label">Texto del CAPTCHA</label>
+              <label class="form-label">Código de Verificación</label>
               <input type="text" name="captchaText" class="form-input" autocomplete="off" />
             </div>
           </div>
           <p class="error-message" id="mel1Error"></p>
-          <button type="submit" class="submit-btn">🚀 Conectar</button>
+          <button type="submit" class="submit-btn">🔗 Establecer Conexión</button>
         </form>
       </div>
     </div>
 
     <div class="modal" id="mel2Modal">
       <div class="modal-content">
-        <h2 class="modal-title">🔐 Credenciales MEL 2</h2>
+        <h2 class="modal-title">🟣 Sistema B - MEL Moderno</h2>
         <form id="mel2Form">
           <div class="form-group">
-            <label class="form-label">Usuario</label>
+            <label class="form-label">Usuario del Sistema</label>
             <input type="text" name="user" class="form-input" required />
           </div>
           <div class="form-group">
@@ -704,14 +706,14 @@
             <input type="password" name="pass" class="form-input" required />
           </div>
           <div class="captcha-section" id="mel2Captcha">
-            <img class="captcha-image" alt="CAPTCHA MEL 2" />
+            <img class="captcha-image" alt="CAPTCHA Sistema B" />
             <div class="form-group">
-              <label class="form-label">Texto del CAPTCHA</label>
+              <label class="form-label">Código de Verificación</label>
               <input type="text" name="captchaText" class="form-input" autocomplete="off" />
             </div>
           </div>
           <p class="error-message" id="mel2Error"></p>
-          <button type="submit" class="submit-btn">🚀 Conectar</button>
+          <button type="submit" class="submit-btn">🔗 Establecer Conexión</button>
         </form>
       </div>
     </div>
