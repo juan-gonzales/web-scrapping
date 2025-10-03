@@ -211,336 +211,594 @@ async function handlePostLoginActions(
 ) {
   try {
     const page = result.page;
-
-    sendLog(appKey, `Página actual: ${page.url()}`);
+    sendLog(
+      appKey,
+      `${appKey.toUpperCase()} - Login completado. Página actual: ${page.url()}`
+    );
 
     if (appKey === "mel1") {
-      sendLog(appKey, "Ejecutando acciones post-login para MEL1...");
-
-      // 🎯 ARRAY DE CÓDIGOS A PROCESAR
-      const codigosAlumnos = [
-        "U20309615",
-        "U21323069",
-        "U21323071",
-        "U21323073",
-        "U21323075",
-        "U21323077",
-        "U21323079",
-        "U21323081",
-        "U25317788",
-        "U25317789",
-      ]; // Agregar más códigos aquí
+      // 🎯 MEL1: Solo guardar la página y esperar
       sendLog(
         appKey,
-        `Procesando ${
-          codigosAlumnos.length
-        } códigos de alumnos: ${codigosAlumnos.join(", ")}`
+        "MEL1 autenticado - Esperando MEL2 para comenzar procesamiento..."
       );
 
-      // 📊 RESULTADOS POR CÓDIGO
-      const resultadosPorCodigo: Array<{
-        codigo: string;
-        alertDetectado: boolean;
-        mensajeAlert?: string;
-        screenshot?: string;
-        error?: string;
-      }> = [];
+      // Guardar referencia global para MEL1
+      (global as any).mel1Page = page;
+      (global as any).mel1Context = result.context;
 
-      // 🔄 ITERAR POR CADA CÓDIGO
-      for (let i = 0; i < codigosAlumnos.length; i++) {
-        const codigo = codigosAlumnos[i];
+      // NO cerrar recursos, mantener sesión viva
+      return;
+    } else if (appKey === "mel2") {
+      // 🎯 MEL2: Iniciar procesamiento cuando esté listo
+      sendLog(
+        appKey,
+        "MEL2 autenticado - Iniciando procesamiento de códigos..."
+      );
+
+      const mel1Page = (global as any).mel1Page;
+      const mel1Context = (global as any).mel1Context;
+
+      if (!mel1Page) {
         sendLog(
           appKey,
-          `\n--- Procesando código ${i + 1}/${
-            codigosAlumnos.length
-          }: ${codigo} ---`
+          "❌ MEL1 no está disponible. Asegúrate de autenticar MEL1 primero."
         );
-
-        try {
-          // 1️⃣ LLENAR EL INPUT DE CÓDIGO
-          const codigoInput = "#txtCodigoAlumnoSimulacion";
-          sendLog(appKey, "Esperando input de código de alumno...");
-          await page.waitForSelector(codigoInput, { timeout: 20000 });
-
-          // Limpiar input antes de llenar
-          await page.fill(codigoInput, "");
-          await page.fill(codigoInput, codigo);
-          sendLog(appKey, `Código de alumno ingresado: ${codigo}`);
-
-          // 2️⃣ CONFIGURAR LISTENER PARA ESTE CÓDIGO
-          sendLog(appKey, "🔍 Configurando listener para alert...");
-
-          let alertDetectado = false;
-          let mensajeAlert = "";
-
-          const dialogHandler = async (dialog: any) => {
-            const message = dialog.message();
-            const type = dialog.type();
-            alertDetectado = true;
-            mensajeAlert = message;
-
-            sendLog(
-              appKey,
-              `🚨 ${type.toUpperCase()} detectado para ${codigo}: "${message}"`
-            );
-
-            // Verificar tipo de mensaje
-            if (
-              message.includes("Su turno de matrícula asignado ya caducó") ||
-              message.includes("matrícula") ||
-              message.includes("caducó") ||
-              message.includes("Ocurrió un error") ||
-              message.includes("Verifique sus datos") ||
-              message.includes("recargue la página")
-            ) {
-              sendLog(
-                appKey,
-                `📋 ${codigo}: Alert de error/matrícula detectado`
-              );
-            } else {
-              sendLog(appKey, `📋 ${codigo}: Alert de otro tipo detectado`);
-            }
-
-            // Capturar evidencia con el código en el nombre
-            try {
-              const alertScreenshot = path.join(
-                path.resolve("evidence"),
-                `${appKey}-${codigo}-alert-${Date.now()}.png`
-              );
-              await page.screenshot({ path: alertScreenshot, fullPage: true });
-              sendLog(
-                appKey,
-                `📸 Evidencia para ${codigo}: ${alertScreenshot}`
-              );
-
-              // Guardar screenshot en resultados
-              resultadosPorCodigo[i] = resultadosPorCodigo[i] || {
-                codigo,
-                alertDetectado: false,
-              };
-              resultadosPorCodigo[i].screenshot = alertScreenshot;
-            } catch (screenshotError) {
-              sendLog(
-                appKey,
-                `❌ Error capturando screenshot para ${codigo}: ${screenshotError}`
-              );
-            }
-
-            // 🎯 ESPERAR UN POCO ANTES DE CERRAR
-            await page.waitForTimeout(1000);
-
-            // ✅ CERRAR EL ALERT
-            await dialog.accept();
-            sendLog(
-              appKey,
-              `✅ Alert cerrado para ${codigo}: "${message.substring(
-                0,
-                50
-              )}..."`
-            );
-          };
-          // Registrar el listener
-          page.on("dialog", dialogHandler);
-
-          // 3️⃣ HACER CLICK EN EL BOTÓN SIMULAR
-          const btnSimular = "#btnSimular";
-          sendLog(appKey, "Esperando botón Simular...");
-          await page.waitForSelector(btnSimular, { timeout: 20000 });
-
-          const isEnabled = await page.isEnabled(btnSimular);
-          const isVisible = await page.isVisible(btnSimular);
-
-          sendLog(
-            appKey,
-            `Botón Simular - Visible: ${isVisible}, Habilitado: ${isEnabled}`
-          );
-
-          if (isVisible && isEnabled) {
-            sendLog(appKey, `Haciendo click en Simular para ${codigo}...`);
-
-            // 🎯 HACER CLICK Y ESPERAR RESPUESTA
-            try {
-              await Promise.race([
-                page.click(btnSimular),
-                page
-                  .waitForEvent("dialog", { timeout: 10000 })
-                  .then(() => {
-                    sendLog(appKey, `🎯 Dialog capturado para ${codigo}`);
-                  })
-                  .catch(() => {
-                    sendLog(
-                      appKey,
-                      `⏰ Timeout esperando dialog para ${codigo}`
-                    );
-                  }),
-              ]);
-
-              sendLog(appKey, `Click ejecutado para ${codigo}`);
-
-              // Esperar procesamiento
-              await page.waitForTimeout(3000);
-
-              sendLog(
-                appKey,
-                `Estado alert ${codigo}: ${
-                  alertDetectado ? "DETECTADO" : "NO DETECTADO"
-                }`
-              );
-
-              // Guardar resultado
-              resultadosPorCodigo[i] = {
-                codigo,
-                alertDetectado,
-                mensajeAlert: mensajeAlert || undefined,
-                screenshot: resultadosPorCodigo[i]?.screenshot,
-              };
-
-              // 🎯 Si no se detectó alert, capturar info adicional
-              if (!alertDetectado) {
-                sendLog(
-                  appKey,
-                  `🔍 Sin alert para ${codigo}, verificando página...`
-                );
-
-                const debugScreenshot = path.join(
-                  path.resolve("evidence"),
-                  `${appKey}-${codigo}-no-alert-${Date.now()}.png`
-                );
-                await page.screenshot({
-                  path: debugScreenshot,
-                  fullPage: true,
-                });
-                resultadosPorCodigo[i].screenshot = debugScreenshot;
-                sendLog(appKey, `📸 Debug para ${codigo}: ${debugScreenshot}`);
-
-                // 🆕 NUEVA FUNCIONALIDAD: Si no hay alert, verificar si llegamos a /matricula/index
-                await page.waitForTimeout(5000);
-                const currentUrl = page.url();
-                sendLog(appKey, `URL actual para ${codigo}: ${currentUrl}`);
-
-                if (currentUrl.includes("/matricula/index")) {
-                  sendLog(
-                    appKey,
-                    `✅ ${codigo} llegó a página de matrícula - procesando modales y cursos...`
-                  );
-
-                  // Manejar modales y extraer cursos
-                  await handleMatriculaPage(
-                    appKey,
-                    page,
-                    codigo,
-                    i,
-                    resultadosPorCodigo
-                  );
-                } else {
-                  sendLog(
-                    appKey,
-                    `⚠️ ${codigo} no llegó a página de matrícula`
-                  );
-                }
-              }
-            } catch (clickError) {
-              const errorMsg = (clickError as Error).message;
-              sendLog(appKey, `❌ Error con ${codigo}: ${errorMsg}`);
-              resultadosPorCodigo[i] = {
-                codigo,
-                alertDetectado: false,
-                error: errorMsg,
-              };
-            }
-          } else {
-            sendLog(appKey, `Botón Simular no disponible para ${codigo}`);
-            resultadosPorCodigo[i] = {
-              codigo,
-              alertDetectado: false,
-              error: "Botón no disponible",
-            };
-          }
-
-          // Remover listener después de cada código
-          page.off("dialog", dialogHandler);
-
-          // Pausa entre códigos
-          if (i < codigosAlumnos.length - 1) {
-            sendLog(appKey, `Pausa antes del siguiente código...`);
-            await page.waitForTimeout(2000);
-          }
-        } catch (codigoError) {
-          const errorMsg = (codigoError as Error).message;
-          sendLog(appKey, `❌ Error procesando ${codigo}: ${errorMsg}`);
-          resultadosPorCodigo[i] = {
-            codigo,
-            alertDetectado: false,
-            error: errorMsg,
-          };
-        }
+        return;
       }
 
-      // 📊 RESUMEN FINAL
-      sendLog(appKey, "\n=== RESUMEN DE RESULTADOS ===");
-      resultadosPorCodigo.forEach((resultado, index) => {
-        const status = resultado.alertDetectado
-          ? "🚨 ALERT"
-          : resultado.error
-          ? "❌ ERROR"
-          : "✅ OK";
-        sendLog(appKey, `${index + 1}. ${resultado.codigo}: ${status}`);
-        if (resultado.mensajeAlert) {
-          sendLog(
-            appKey,
-            `   Mensaje: "${resultado.mensajeAlert.substring(0, 80)}..."`
-          );
-        }
-        if (resultado.error) {
-          sendLog(appKey, `   Error: ${resultado.error}`);
-        }
-        if (resultado.screenshot) {
-          sendLog(
-            appKey,
-            `   Screenshot: ${path.basename(resultado.screenshot)}`
-          );
-        }
-      });
+      // Guardar referencia para MEL2
+      (global as any).mel2Page = page;
+      (global as any).mel2Context = result.context;
 
-      // 📄 GUARDAR RESUMEN EN JSON
-      const resumenPath = path.join(
-        path.resolve("evidence"),
-        `${appKey}-resumen-${Date.now()}.json`
-      );
-      fs.writeFileSync(
-        resumenPath,
-        JSON.stringify(resultadosPorCodigo, null, 2)
-      );
-      sendLog(appKey, `📄 Resumen guardado: ${resumenPath}`);
+      // PROCESAR TODOS LOS CÓDIGOS EN AMBOS SISTEMAS
+      await procesarCodigosEnAmbosApps();
 
-      sendLog(appKey, "Acciones post-login MEL1 completadas.");
-    } else if (appKey === "mel2") {
-      sendLog(appKey, "Ejecutando acciones post-login para MEL2...");
-      sendLog(appKey, "Acciones post-login MEL2 completadas.");
+      // Cerrar ambas sesiones al final
+      await cerrarTodasLasSesiones();
     }
-
-    // Capturar evidencia final
-    const postActionScreenshot = path.join(
-      path.resolve("evidence"),
-      `${appKey}-final-${Date.now()}.png`
-    );
-    await page.screenshot({ path: postActionScreenshot, fullPage: true });
-    sendLog(appKey, `Evidencia final: ${postActionScreenshot}`);
-
-    // Cerrar recursos
-    await page.close();
-    await result.context.close();
   } catch (error) {
     sendLog(
       appKey,
       `Error en acciones post-login: ${(error as Error).message}`
     );
-    if (result.page && !result.page.isClosed()) {
-      await result.page.close();
+  }
+}
+
+// Nueva función para procesar códigos en ambas apps
+async function procesarCodigosEnAmbosApps() {
+  const codigosAlumnos = [
+    "U20309615",
+    "U21323069",
+    "U21323071",
+    "U21323073",
+    "U21323075",
+    "U21323077",
+    "U21323079",
+    "U21323081",
+    "U25317788",
+    "U25317789",
+  ];
+
+  sendLog(
+    "mel1",
+    `🚀 Procesando ${codigosAlumnos.length} códigos en MEL1 y MEL2 secuencialmente...`
+  );
+
+  const resultadosFinales: any[] = [];
+
+  for (let i = 0; i < codigosAlumnos.length; i++) {
+    const codigo = codigosAlumnos[i];
+
+    sendLog(
+      "mel1",
+      `\n=== CÓDIGO ${i + 1}/${codigosAlumnos.length}: ${codigo} ===`
+    );
+
+    const resultadoCodigo = {
+      codigo,
+      mel1: { error: {}, data: {} },
+      mel2: { error: {}, data: {} },
+    };
+
+    // 1️⃣ PROCESAR EN MEL1 (usando página de MEL1)
+    try {
+      sendLog("mel1", `📋 Procesando ${codigo} en MEL1...`);
+      const mel1Page = (global as any).mel1Page;
+      resultadoCodigo.mel1.data = await procesarCodigoEnMel1(
+        mel1Page,
+        codigo,
+        i
+      );
+      sendLog("mel1", `✅ ${codigo} completado en MEL1`);
+    } catch (mel1Error) {
+      resultadoCodigo.mel1.error = (mel1Error as Error).message;
+      sendLog(
+        "mel1",
+        `❌ Error en MEL1 para ${codigo}: ${resultadoCodigo.mel1.error}`
+      );
     }
-    if (result.context) {
-      await result.context.close();
+
+    // 2️⃣ PROCESAR EN MEL2 (usando página de MEL2)
+    try {
+      sendLog("mel2", `📋 Procesando ${codigo} en MEL2...`);
+      const mel2Page = (global as any).mel2Page;
+      resultadoCodigo.mel2.data = await procesarCodigoEnMel2(
+        mel2Page,
+        codigo,
+        i
+      );
+      sendLog("mel2", `✅ ${codigo} completado en MEL2`);
+    } catch (mel2Error) {
+      resultadoCodigo.mel2.error = (mel2Error as Error).message;
+      sendLog(
+        "mel2",
+        `❌ Error en MEL2 para ${codigo}: ${resultadoCodigo.mel2.error}`
+      );
     }
+
+    resultadosFinales.push(resultadoCodigo);
+
+    // Pausa entre códigos
+    if (i < codigosAlumnos.length - 1) {
+      sendLog("mel1", "⏸️ Pausa antes del siguiente código...");
+      await (global as any).mel1Page.waitForTimeout(2000);
+    }
+  }
+
+  // 📄 GUARDAR RESULTADOS FINALES
+  const resumenPath = path.join(
+    path.resolve("evidence"),
+    `resumen-completo-ambos-sistemas-${Date.now()}.json`
+  );
+  fs.writeFileSync(resumenPath, JSON.stringify(resultadosFinales, null, 2));
+  sendLog("mel1", `📄 Resumen completo guardado: ${resumenPath}`);
+
+  sendLog(
+    "mel1",
+    "🎉 Procesamiento de todos los códigos completado en ambos sistemas"
+  );
+}
+
+// Función para procesar código en MEL1 (usando la lógica existente)
+async function procesarCodigoEnMel1(page: any, codigo: string, index: number) {
+  // 1️⃣ LLENAR INPUT Y CONFIGURAR LISTENER
+  const codigoInput = "#txtCodigoAlumnoSimulacion";
+  await page.waitForSelector(codigoInput, { timeout: 20000 });
+  await page.fill(codigoInput, "");
+  await page.fill(codigoInput, codigo);
+
+  let alertDetectado = false;
+  let mensajeAlert = "";
+  let screenshot = "";
+
+  const dialogHandler = async (dialog: any) => {
+    const message = dialog.message();
+    alertDetectado = true;
+    mensajeAlert = message;
+
+    // Capturar screenshot
+    const alertScreenshot = path.join(
+      path.resolve("evidence"),
+      `mel1-${codigo}-alert-${Date.now()}.png`
+    );
+    await page.screenshot({ path: alertScreenshot, fullPage: true });
+    screenshot = alertScreenshot;
+
+    await dialog.accept();
+    sendLog("mel1", `🚨 Alert MEL1 ${codigo}: ${message.substring(0, 50)}...`);
+  };
+
+  page.on("dialog", dialogHandler);
+
+  // 2️⃣ HACER CLICK EN SIMULAR
+  const btnSimular = "#btnSimular";
+  await page.waitForSelector(btnSimular, { timeout: 20000 });
+  await page.click(btnSimular);
+  await page.waitForTimeout(3000);
+
+  let cursos = [];
+  let modales: string[] = [];
+
+  // 3️⃣ SI NO HAY ALERT, VERIFICAR MATRÍCULA
+  if (!alertDetectado) {
+    const matriculaResult = await procesarMatriculaMel1(page, codigo);
+    cursos = matriculaResult.cursos;
+    modales = matriculaResult.modales;
+
+    // Cerrar sesión para volver al inicio
+    await page.goto(
+      `https://melvisor.utp.edu.pe/seguridad/FinalizarSimulacion`
+    );
+    await page.waitForTimeout(3000);
+  } else {
+    sendLog("mel1", `🚨 Si Alert MEL1 `);
+  }
+
+  page.off("dialog", dialogHandler);
+
+  return {
+    alertDetectado,
+    mensajeAlert,
+    screenshot,
+    cursos,
+    modales,
+  };
+}
+
+// Función para procesar código en MEL2 (usando página separada)
+async function procesarCodigoEnMel2(page: any, codigo: string, index: number) {
+  try {
+    // 1️⃣ NAVEGAR A LA PÁGINA PRINCIPAL DE MEL2 (si es necesario)
+    const currentUrl = page.url();
+    sendLog("mel2", `📍 URL actual MEL2: ${currentUrl}`);
+
+    // 2️⃣ BUSCAR INPUT DE CÓDIGO EN MEL2
+
+    // 3️⃣ LLENAR CÓDIGO
+    await page.fill('input[placeholder="Ingresa el código del alumno"]', "");
+    await page.fill(
+      'input[placeholder="Ingresa el código del alumno"]',
+      codigo
+    );
+    sendLog("mel2", `📝 Código ${codigo} ingresado en MEL2`);
+
+    // 4️⃣ BUSCAR BOTÓN DE ENVÍO
+    await page.click('button:has-text("Simular")');
+    sendLog("mel2", `✅ Click en botón Simular realizado para ${codigo}`);
+
+    // 5️⃣ ESPERAR RESPUESTA Y CAPTURAR
+    await page.waitForTimeout(5000);
+
+    const resultScreenshot = path.join(
+      path.resolve("evidence"),
+      `mel2-${codigo}-result-${Date.now()}.png`
+    );
+    await page.screenshot({ path: resultScreenshot, fullPage: true });
+
+    // 6️⃣ PROCESAR MATRÍCULA EN MEL2
+    const matriculaResult = await procesarMatriculaMel2(page, codigo);
+
+    sendLog(
+      "mel2",
+      `📊 Datos extraídos de MEL2 para ${codigo}: ${JSON.stringify(
+        matriculaResult
+      )}`
+    );
+
+    return {
+      screenshot: resultScreenshot,
+      datos: matriculaResult,
+      url: currentUrl,
+    };
+  } catch (error) {
+    throw error;
+  }
+}
+
+// Función auxiliar para manejar matrícula en MEL1 (simplificada)
+async function procesarMatriculaMel1(page: any, codigo: string) {
+  sendLog("mel1", `🔍 Procesando matrícula para ${codigo}... en ${page.url()}`);
+  await page.waitForTimeout(10000);
+  const modales: string[] = [];
+  let cursos: any[] = [];
+
+  // Manejar modales
+  try {
+    await page.waitForSelector("#myModalInit1", { timeout: 3000 });
+    await page.click(
+      '#myModalInit1 button.btn.btn-danger[data-dismiss="modal"]'
+    );
+    modales.push("Modal Tips");
+  } catch {}
+
+  try {
+    await page.waitForSelector("a.introjs-skipbutton", { timeout: 3000 });
+    await page.click("a.introjs-skipbutton");
+    modales.push("Modal Tutorial");
+  } catch {}
+
+  // Extraer cursos
+
+  cursos = await page.evaluate(() => {
+    const cursosArray: any[] = [];
+    const filas = document.querySelectorAll("#tableCursos tbody tr");
+
+    filas.forEach((fila: any) => {
+      const celdas = fila.querySelectorAll("td");
+      if (celdas.length >= 7) {
+        const cursoCompleto = celdas[0]?.textContent?.trim() || "";
+        const match = cursoCompleto.match(/^([A-Z0-9]+)\s*-\s*(.+)$/);
+
+        if (match) {
+          cursosArray.push({
+            codigo: match[1].trim(),
+            nombre: match[2].trim(),
+            creditos: celdas[2]?.textContent?.trim() || "",
+            tipo: celdas[5]?.textContent?.trim() || "",
+          });
+        }
+      }
+    });
+
+    return cursosArray;
+  });
+
+  // Hacer click en primer curso si existe
+  if (cursos.length > 0) {
+    try {
+      await page.click('a.loadDetalleCurso[data-action="Agregar"]');
+      sendLog("mel1", `✅ Primer curso agregado para ${codigo}`);
+      await page.waitForTimeout(3000);
+    } catch {}
+  }
+
+  return { modales, cursos };
+}
+
+async function procesarMatriculaMel2(page: any, codigo: string) {
+  await page.waitForTimeout(5000);
+  sendLog("mel2", `🔍 Procesando matrícula MEL2 para ${codigo}...`);
+
+  // 1️⃣ CERRAR MODAL "ENTENDIDO"
+  try {
+    sendLog("mel2", `🔍 Buscando modal "Entendido" para ${codigo}...`);
+
+    await page.waitForSelector(
+      'dialog[data-open="true"] header button[aria-label="Close modal"]',
+      {
+        timeout: 8000,
+        state: "visible",
+      }
+    );
+    await page.click(
+      'dialog[data-open="true"] header button[aria-label="Close modal"]'
+    );
+    sendLog("mel2", `✅ Modal cerrado con botón X para ${codigo}`);
+  } catch (modalError) {
+    sendLog(
+      "mel2",
+      `⚠️ Modal "Entendido" no encontrado para ${codigo}: ${modalError}`
+    );
+  }
+
+  // 2️⃣ HACER CLICK EN BOTÓN "OMITIR"
+  try {
+    sendLog("mel2", `🔍 Buscando botón "Omitir" para ${codigo}...`);
+
+    await page.waitForSelector(
+      'footer[data-testid="modal-footer"] button:has-text("Omitir")',
+      {
+        timeout: 5000,
+        state: "visible",
+      }
+    );
+    await page.click(
+      'footer[data-testid="modal-footer"] button:has-text("Omitir")'
+    );
+    sendLog("mel2", `✅ Botón "Omitir" clickeado para ${codigo}`);
+
+    await page.waitForTimeout(2000); // Pausa después de omitir
+  } catch (omitirError) {
+    sendLog(
+      "mel2",
+      `⚠️ Botón "Omitir" no encontrado para ${codigo}: ${omitirError}`
+    );
+  }
+
+  // 3️⃣ EXTRAER CURSOS DE MEL2
+  const cursosExtraidos = await page.evaluate(() => {
+    const cursosArray: any[] = [];
+    const filas = document.querySelectorAll(
+      'tbody[data-testid="table-content"] tr'
+    );
+
+    filas.forEach((fila: any, index: number) => {
+      try {
+        const celdas = fila.querySelectorAll("td");
+
+        if (celdas.length >= 7) {
+          // Primera columna: contiene código y nombre del curso
+          const primeraCelda = celdas[0];
+          const cursoDiv = primeraCelda.querySelector("div.w-80");
+          const cursoCompleto = cursoDiv?.textContent?.trim() || "";
+
+          // Extraer mensaje de alerta si existe (ej: "1 vez desaprobado")
+          const alertSpan = primeraCelda.querySelector(
+            'span[data-testid="alert-message"] p'
+          );
+          const alertMessage = alertSpan?.textContent?.trim() || "";
+
+          // Otras columnas
+          const horasSemanales = celdas[1]?.textContent?.trim() || "";
+          const creditos = celdas[2]?.textContent?.trim() || "";
+          const ciclo = celdas[3]?.textContent?.trim() || "";
+          const tipo = celdas[4]?.textContent?.trim() || "";
+          const seccion = celdas[5]?.textContent?.trim() || "";
+
+          // Verificar si el botón "Agregar" está habilitado
+          const btnAgregar = celdas[6]?.querySelector("button");
+          const isDisabled = btnAgregar?.hasAttribute("disabled") || false;
+          const btnEstado = isDisabled ? "Deshabilitado" : "Habilitado";
+
+          // Extraer código y nombre del formato "CÓDIGO - NOMBRE"
+          const match = cursoCompleto.match(/^([A-Z0-9]+)\s*-\s*(.+)$/);
+
+          if (match && cursoCompleto) {
+            const codigo = match[1].trim();
+            const nombre = match[2].trim();
+
+            cursosArray.push({
+              codigo,
+              nombre,
+              horasSemanales,
+              creditos,
+              ciclo,
+              tipo,
+              seccion,
+              cursoCompleto,
+              alertMessage,
+              botonEstado: btnEstado,
+              index: index + 1,
+            });
+          }
+        }
+      } catch (error) {
+        console.log(`Error procesando fila ${index + 1}:`, error);
+      }
+    });
+
+    return cursosArray;
+  });
+
+  sendLog(
+    "mel2",
+    `📚 ${cursosExtraidos.length} cursos encontrados en MEL2 para ${codigo}`
+  );
+
+  cursosExtraidos.forEach((curso: any, idx: number) => {
+    const alert = curso.alertMessage ? ` [${curso.alertMessage}]` : "";
+    const estado =
+      curso.botonEstado === "Deshabilitado" ? " [DESHABILITADO]" : "";
+    sendLog(
+      "mel2",
+      `  ${idx + 1}. ${curso.codigo} - ${curso.nombre} (${
+        curso.creditos
+      } créditos, ${curso.tipo})${alert}${estado}`
+    );
+  });
+
+  // 4️⃣ HACER CLICK EN EL PRIMER BOTÓN "AGREGAR" DISPONIBLE
+  if (cursosExtraidos.length > 0) {
+    try {
+      sendLog(
+        "mel2",
+        `🎯 Buscando primer botón "Agregar" habilitado para ${codigo}...`
+      );
+
+      // Buscar el primer botón Agregar que NO esté deshabilitado
+      await page.waitForSelector(
+        'tbody[data-testid="table-content"] tr button:not([disabled])',
+        {
+          timeout: 5000,
+          state: "visible",
+        }
+      );
+
+      // Obtener información del primer curso habilitado
+      const primerCursoHabilitado = cursosExtraidos.find(
+        (c: any) => c.botonEstado === "Habilitado"
+      );
+
+      if (primerCursoHabilitado) {
+        sendLog(
+          "mel2",
+          `📝 Haciendo click en "Agregar" para: ${primerCursoHabilitado.codigo} - ${primerCursoHabilitado.nombre}`
+        );
+
+        // Capturar screenshot antes del click
+        const preClickScreenshot = path.join(
+          path.resolve("evidence"),
+          `mel2-${codigo}-pre-agregar-${Date.now()}.png`
+        );
+        await page.screenshot({ path: preClickScreenshot, fullPage: true });
+        sendLog("mel2", `📸 Pre-click: ${preClickScreenshot}`);
+
+        // Hacer click en el primer botón habilitado
+        await page.click(
+          'tbody[data-testid="table-content"] tr button:not([disabled])'
+        );
+        sendLog("mel2", `✅ Click realizado en botón "Agregar" para ${codigo}`);
+
+        // Esperar respuesta del servidor
+        await page.waitForTimeout(6000);
+
+        // Capturar screenshot después del click
+        const postClickScreenshot = path.join(
+          path.resolve("evidence"),
+          `mel2-${codigo}-post-agregar-${Date.now()}.png`
+        );
+        await page.screenshot({ path: postClickScreenshot, fullPage: true });
+        sendLog("mel2", `📸 Post-click: ${postClickScreenshot}`);
+
+        await page.waitForSelector(
+          'dialog[data-open="true"] header button[aria-label="Close modal"]'
+        );
+        await page.click(
+          'dialog[data-open="true"] header button[aria-label="Close modal"]'
+        );
+        try {
+          sendLog(
+            "mel2",
+            `🔄 Buscando botón "Cambiar alumno" para ${codigo}...`
+          );
+
+          await page.waitForSelector('button:has-text("Cambiar alumno")', {
+            timeout: 1000,
+            state: "visible",
+          });
+
+          await page.click('button:has-text("Cambiar alumno")');
+          sendLog(
+            "mel2",
+            `✅ Botón "Cambiar alumno" clickeado - reiniciando flujo para siguiente código`
+          );
+
+          // Esperar a que la página se reinicie
+          await page.waitForTimeout(3000);
+        } catch (cambiarError) {
+          sendLog(
+            "mel2",
+            `⚠️ Botón "Cambiar alumno" no encontrado para ${codigo}: ${cambiarError}`
+          );
+        }
+      } else {
+        sendLog(
+          "mel2",
+          `⚠️ No hay cursos habilitados para agregar en ${codigo}`
+        );
+      }
+    } catch (agregarError) {
+      sendLog(
+        "mel2",
+        `❌ Error haciendo click en "Agregar" para ${codigo}: ${agregarError}`
+      );
+    }
+  } else {
+    sendLog("mel2", `⚠️ No hay cursos disponibles para agregar en ${codigo}`);
+  }
+
+  return {
+    modalCerrado: true,
+    datos: {
+      cursos: cursosExtraidos,
+      totalCursos: cursosExtraidos.length,
+      cursosHabilitados: cursosExtraidos.filter(
+        (c: any) => c.botonEstado === "Habilitado"
+      ).length,
+      cursosDeshabilitados: cursosExtraidos.filter(
+        (c: any) => c.botonEstado === "Deshabilitado"
+      ).length,
+    },
+  };
+}
+
+// Función para cerrar todas las sesiones
+async function cerrarTodasLasSesiones() {
+  try {
+    const mel1Page = (global as any).mel1Page;
+    const mel1Context = (global as any).mel1Context;
+    const mel2Page = (global as any).mel2Page;
+    const mel2Context = (global as any).mel2Context;
+
+    if (mel1Page && !mel1Page.isClosed()) await mel1Page.close();
+    if (mel1Context) await mel1Context.close();
+    if (mel2Page && !mel2Page.isClosed()) await mel2Page.close();
+    if (mel2Context) await mel2Context.close();
+
+    sendLog("mel1", "✅ Todas las sesiones cerradas correctamente");
+  } catch (closeError) {
+    sendLog("mel1", `⚠️ Error cerrando sesiones: ${closeError}`);
   }
 }
 
@@ -562,28 +820,32 @@ async function handleMatriculaPage(
     // Modal 1: Tips/Recomendaciones
     try {
       sendLog(appKey, `🔍 Buscando modal Tips para ${codigo}...`);
-    
+
       // Esperar el modal específico con ID myModalInit1
-      await page.waitForSelector('#myModalInit1', { timeout: 5000 });
+      await page.waitForSelector("#myModalInit1", { timeout: 5000 });
       sendLog(appKey, `📋 Modal Tips detectado para ${codigo}`);
-    
+
       // Click directo en el botón Cerrar del modal específico
-      await page.click('#myModalInit1 button.btn.btn-danger[data-dismiss="modal"]');
+      await page.click(
+        '#myModalInit1 button.btn.btn-danger[data-dismiss="modal"]'
+      );
       sendLog(appKey, `✅ Modal Tips cerrado para ${codigo}`);
       modalesDetectados.push("Modal de Tips");
-      
     } catch (modalError) {
-      sendLog(appKey, `⚠️ Modal Tips no encontrado para ${codigo}: ${modalError}`);
+      sendLog(
+        appKey,
+        `⚠️ Modal Tips no encontrado para ${codigo}: ${modalError}`
+      );
     }
 
     // // Modal 2: Empezar
     try {
       sendLog(appKey, `🔍 Buscando modal Tutorial para ${codigo}...`);
-      
+
       // Esperar el botón Omitir específico
-      await page.waitForSelector('a.introjs-skipbutton', { timeout: 5000 });
+      await page.waitForSelector("a.introjs-skipbutton", { timeout: 5000 });
       sendLog(appKey, `📋 Modal Tutorial detectado para ${codigo}`);
-      
+
       // Capturar screenshot del modal
       const modalScreenshot = path.join(
         path.resolve("evidence"),
@@ -591,14 +853,16 @@ async function handleMatriculaPage(
       );
       await page.screenshot({ path: modalScreenshot, fullPage: true });
       sendLog(appKey, `📸 Modal Tutorial: ${modalScreenshot}`);
-      
+
       // Click directo en el botón Omitir
-      await page.click('a.introjs-skipbutton');
+      await page.click("a.introjs-skipbutton");
       sendLog(appKey, `✅ Modal Tutorial cerrado (Omitir) para ${codigo}`);
       modalesDetectados.push("Modal Tutorial");
-      
     } catch (tutorialError) {
-      sendLog(appKey, `⚠️ Modal Tutorial no encontrado para ${codigo}: ${tutorialError}`);
+      sendLog(
+        appKey,
+        `⚠️ Modal Tutorial no encontrado para ${codigo}: ${tutorialError}`
+      );
     }
 
     // 2️⃣ EXTRAER CURSOS
@@ -720,20 +984,23 @@ async function handleMatriculaPage(
     if (cursos.length > 0) {
       try {
         sendLog(appKey, `🎯 Buscando primer botón "Agregar" para ${codigo}...`);
-        
+
         // Buscar el primer botón Agregar disponible
         const btnAgregar = await page.waitForSelector(
           'a.loadDetalleCurso.btn.btn-success[data-action="Agregar"]',
           { timeout: 5000 }
         );
-        
+
         if (btnAgregar) {
           // Obtener información del curso antes de hacer click
-          const dataCurso = await btnAgregar.getAttribute('data-curso');
+          const dataCurso = await btnAgregar.getAttribute("data-curso");
           const primerCurso = cursos[0]; // El primer curso de la lista extraída
-          
-          sendLog(appKey, `📝 Haciendo click en "Agregar" para curso: ${primerCurso.codigo} - ${primerCurso.nombre} (data-curso: ${dataCurso})`);
-          
+
+          sendLog(
+            appKey,
+            `📝 Haciendo click en "Agregar" para curso: ${primerCurso.codigo} - ${primerCurso.nombre} (data-curso: ${dataCurso})`
+          );
+
           // Capturar screenshot antes del click
           const preClickScreenshot = path.join(
             path.resolve("evidence"),
@@ -741,14 +1008,17 @@ async function handleMatriculaPage(
           );
           await page.screenshot({ path: preClickScreenshot, fullPage: true });
           sendLog(appKey, `📸 Pre-click: ${preClickScreenshot}`);
-          
+
           // Hacer click en el botón
           await btnAgregar.click();
-          sendLog(appKey, `✅ Click realizado en botón "Agregar" para ${codigo}`);
-          
+          sendLog(
+            appKey,
+            `✅ Click realizado en botón "Agregar" para ${codigo}`
+          );
+
           // Esperar un momento para que se procese
           await page.waitForTimeout(3000);
-          
+
           // Capturar screenshot después del click
           const postClickScreenshot = path.join(
             path.resolve("evidence"),
@@ -756,13 +1026,14 @@ async function handleMatriculaPage(
           );
           await page.screenshot({ path: postClickScreenshot, fullPage: true });
           sendLog(appKey, `📸 Post-click: ${postClickScreenshot}`);
-          
         } else {
           sendLog(appKey, `⚠️ No se encontró botón "Agregar" para ${codigo}`);
         }
-        
       } catch (agregarError) {
-        sendLog(appKey, `❌ Error haciendo click en "Agregar" para ${codigo}: ${agregarError}`);
+        sendLog(
+          appKey,
+          `❌ Error haciendo click en "Agregar" para ${codigo}: ${agregarError}`
+        );
       }
     } else {
       sendLog(appKey, `⚠️ No hay cursos disponibles para agregar en ${codigo}`);
