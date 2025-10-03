@@ -138,8 +138,6 @@ function updateStatusCard(payload: StatusPayload) {
 }
 
 function handleFormSubmit(app: MelAppKey) {
-  console.log("🚀 ~ handleFormSubmit ~ app:", app)
-  
   const { form, submitButton, error, captchaSection } = modalRefs[app];
   form.addEventListener('submit', (event) => {
     event.preventDefault();
