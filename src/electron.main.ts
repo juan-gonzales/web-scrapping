@@ -268,16 +268,17 @@ async function handlePostLoginActions(
 // Nueva función para procesar códigos en ambas apps
 async function procesarCodigosEnAmbosApps() {
   const codigosAlumnos = [
+    // "U20309614",
     "U20309615",
-    "U21323069",
-    "U21323071",
-    "U21323073",
-    "U21323075",
-    "U21323077",
-    "U21323079",
-    "U21323081",
-    "U25317788",
-    "U25317789",
+    // "U21323069",
+    // "U21323071",
+    // "U21323073",
+    // "U21323075",
+    // "U21323077",
+    // "U21323079",
+    // "U21323081",
+    // "U25317788",
+    // "U25317789",
   ];
 
   sendLog(
@@ -310,7 +311,12 @@ async function procesarCodigosEnAmbosApps() {
         codigo,
         i
       );
-      sendLog("mel1", `✅ ${codigo} completado en MEL1`);
+      sendLog(
+        "mel1",
+        `✅ ${codigo} completado en MEL1: ${JSON.stringify(
+          resultadoCodigo.mel1.data
+        )}`
+      );
     } catch (mel1Error) {
       resultadoCodigo.mel1.error = (mel1Error as Error).message;
       sendLog(
@@ -328,7 +334,12 @@ async function procesarCodigosEnAmbosApps() {
         codigo,
         i
       );
-      sendLog("mel2", `✅ ${codigo} completado en MEL2`);
+      sendLog(
+        "mel2",
+        `✅ ${codigo} completado en MEL2:${JSON.stringify(
+          resultadoCodigo.mel2.data
+        )}`
+      );
     } catch (mel2Error) {
       resultadoCodigo.mel2.error = (mel2Error as Error).message;
       sendLog(
@@ -351,18 +362,299 @@ async function procesarCodigosEnAmbosApps() {
     path.resolve("evidence"),
     `resumen-completo-ambos-sistemas-${Date.now()}.json`
   );
-  fs.writeFileSync(resumenPath, JSON.stringify(resultadosFinales, null, 2));
-  sendLog("mel1", `📄 Resumen completo guardado: ${resumenPath}`);
+  // 🔍 GENERAR ANÁLISIS COMPARATIVO
+  const analisisTotal = generarAnalisisComparativo(resultadosFinales);
 
-  sendLog(
-    "mel1",
-    "🎉 Procesamiento de todos los códigos completado en ambos sistemas"
-  );
+  // Guardar resultados completos con análisis
+  const resultadosCompletos = {
+    timestamp: new Date().toISOString(),
+    totalCodigos: resultadosFinales.length,
+    analisisComparativo: analisisTotal,
+    resultadosDetallados: resultadosFinales,
+  };
+
+  fs.writeFileSync(resumenPath, JSON.stringify(resultadosCompletos, null, 2));
+  sendLog("mel1", `📄 Resumen completo con análisis guardado: ${resumenPath}`);
+
+  sendLog("mel1", `   📊 Códigos procesados: ${analisisTotal.length}`);
+  for (const analisis of analisisTotal) {
+    sendLog(
+      "mel1",
+      `Hay coincidencias exactas en modales: ${
+        analisis.coincidencias.validaciones ? "Sí" : "No"
+      }`
+    );
+  }
+}
+
+function generarAnalisisComparativo(resultados: any[]) {
+  const analisis = [];
+
+  for (const resultado of resultados) {
+    const { codigo, mel1, mel2 } = resultado;
+
+    const analisisCodigo = {
+      codigo,
+      sonIguales: false,
+      coincidencias: {
+        validaciones: false,
+        modales: false,
+        cargaHabil: false,
+        consultaClases: false,
+      },
+      diferencias: {},
+    };
+
+    // Extraer datos de ambos sistemas
+    const alertMel1 = mel1.error?.alert || {};
+    console.log("🚀 ~ generarAnalisisComparativo ~ alertMel1:", alertMel1);
+    const alertMel2 = mel2.error?.alert || {};
+    console.log("🚀 ~ generarAnalisisComparativo ~ alertMel2:", alertMel2);
+    const cursosMel1 = mel1.data?.cursos || [];
+    console.log("🚀 ~ generarAnalisisComparativo ~ cursosMel1:", cursosMel1);
+    const cursosMel2 = mel2.data?.cursos || [];
+    console.log("🚀 ~ generarAnalisisComparativo ~ cursosMel2:", cursosMel2);
+    const modalesMel1 = mel1.data?.modales || [];
+    console.log("🚀 ~ generarAnalisisComparativo ~ modalesMel1:", modalesMel1);
+    const modalesMel2 = mel2.data?.modales || [];
+    console.log("🚀 ~ generarAnalisisComparativo ~ modalesMel2:", modalesMel2);
+
+    // Validar alerts
+    if (alertMel1.alertDetectado === alertMel2.alertDetectado) {
+      analisisCodigo.coincidencias.validaciones = true;
+      //TODO Comparar mensajes si ambos tienen alert
+    }
+
+    // Validar modales
+    if (modalesMel1.length === modalesMel2.length) {
+      if (
+        modalesMel1
+          .sort()
+          .every((item: any, index: any) => item === modalesMel2.sort()[index])
+      ) {
+        analisisCodigo.coincidencias.modales = true;
+      } else {
+        analisisCodigo.coincidencias.modales = true;
+      }
+    } else {
+      analisisCodigo.coincidencias.modales = false;
+    }
+
+    // COMPARAR CANTIDAD DE CURSOS
+    if (cursosMel1.length === cursosMel2.length) {
+      for (const curso of cursosMel1) {
+        const cursoEnMel2 = cursosMel2.find(
+          (c: any) => c.codigo.toUpperCase() === curso.codigo.toUpperCase()
+        );
+        if (!cursoEnMel2) {
+          analisisCodigo.coincidencias.cargaHabil = false;
+          break;
+        }
+        if (curso.nombre.toUpperCase() !== cursoEnMel2.nombre.toUpperCase()) {
+          analisisCodigo.coincidencias.cargaHabil = false;
+          break;
+        }
+        if (
+          parseFloat(curso.horasSemanales) !==
+          parseFloat(cursoEnMel2.horasSemanales)
+        ) {
+          analisisCodigo.coincidencias.cargaHabil = false;
+          break;
+        }
+        if (parseFloat(curso.creditos) !== parseFloat(cursoEnMel2.creditos)) {
+          analisisCodigo.coincidencias.cargaHabil = false;
+          break;
+        }
+        if (parseFloat(curso.ciclo) !== parseFloat(cursoEnMel2.ciclo)) {
+          analisisCodigo.coincidencias.cargaHabil = false;
+          break;
+        }
+        if (
+          curso.nroInscripcion.match(/(\d+)/)?.[1] ||
+          "0" !== cursoEnMel2.nroInscripcion.match(/(\d+)/)?.[1] ||
+          "0"
+        ) {
+          analisisCodigo.coincidencias.cargaHabil = false;
+          break;
+        }
+        if (curso.tipo.toUpperCase() !== cursoEnMel2.tipo.toUpperCase()) {
+          analisisCodigo.coincidencias.cargaHabil = false;
+          break;
+        }
+        if (
+          (curso.seccion === "--" ? "" : curso.seccion.toUpperCase()) !==
+          (cursoEnMel2.seccion === "--"
+            ? ""
+            : cursoEnMel2.seccion.toUpperCase())
+        ) {
+          analisisCodigo.coincidencias.cargaHabil = false;
+          break;
+        }
+        if (curso.estadoBtn !== cursoEnMel2.estadoBtn) {
+          analisisCodigo.coincidencias.cargaHabil = false;
+          break;
+        }
+      }
+      analisisCodigo.coincidencias.cargaHabil = true;
+    } else {
+      analisisCodigo.coincidencias.cargaHabil = false;
+    }
+
+    // 3️⃣ COMPARAR CURSOS UNO POR UNO
+    // const cursosComparados = compararCursos(cursosMel1, cursosMel2);
+
+    analisis.push(analisisCodigo);
+  }
+
+  return analisis;
+}
+
+// 🔍 FUNCIÓN AUXILIAR PARA COMPARAR CURSOS
+function compararCursos(cursosMel1: any[], cursosMel2: any[]) {
+  const resultado = {
+    coincidencias: [] as string[],
+    diferenciasMenures: [] as string[],
+    diferenciasCriticas: [] as string[],
+  };
+
+  // Crear mapas por código de curso para comparación eficiente
+  const mapamel1 = new Map();
+  const mapamel2 = new Map();
+
+  cursosMel1.forEach((curso) => mapamel1.set(curso.codigo, curso));
+  cursosMel2.forEach((curso) => mapamel2.set(curso.codigo, curso));
+
+  // Obtener todos los códigos únicos
+  const todosLosCodigos = new Set([
+    ...cursosMel1.map((c) => c.codigo),
+    ...cursosMel2.map((c) => c.codigo),
+  ]);
+
+  for (const codigo of todosLosCodigos) {
+    const cursoMel1 = mapamel1.get(codigo);
+    const cursoMel2 = mapamel2.get(codigo);
+
+    // Verificar existencia en ambos sistemas
+    if (!cursoMel1 && cursoMel2) {
+      resultado.diferenciasCriticas.push(`Curso ${codigo} solo existe en MEL2`);
+      continue;
+    }
+    if (cursoMel1 && !cursoMel2) {
+      resultado.diferenciasCriticas.push(`Curso ${codigo} solo existe en MEL1`);
+      continue;
+    }
+
+    // Comparar propiedades del curso
+    if (cursoMel1 && cursoMel2) {
+      // Normalizar nombres para comparación (case-insensitive y sin espacios extra)
+      const nombreMel1 = cursoMel1.nombre?.toLowerCase().trim() || "";
+      const nombreMel2 = cursoMel2.nombre?.toLowerCase().trim() || "";
+
+      if (nombreMel1 === nombreMel2) {
+        resultado.coincidencias.push(`${codigo}: Nombre idéntico`);
+      } else {
+        // Verificar similitud (90% o más)
+        const similitud = calcularSimilitudTexto(nombreMel1, nombreMel2);
+        if (similitud >= 0.9) {
+          resultado.diferenciasMenures.push(
+            `${codigo}: Nombres similares (${Math.round(
+              similitud * 100
+            )}%) - "${cursoMel1.nombre}" vs "${cursoMel2.nombre}"`
+          );
+        } else {
+          resultado.diferenciasCriticas.push(
+            `${codigo}: Nombres diferentes - "${cursoMel1.nombre}" vs "${cursoMel2.nombre}"`
+          );
+        }
+      }
+
+      // Comparar créditos
+      if (cursoMel1.creditos === cursoMel2.creditos) {
+        resultado.coincidencias.push(
+          `${codigo}: Créditos idénticos (${cursoMel1.creditos})`
+        );
+      } else {
+        resultado.diferenciasMenures.push(
+          `${codigo}: Créditos diferentes - MEL1: ${cursoMel1.creditos}, MEL2: ${cursoMel2.creditos}`
+        );
+      }
+
+      // Comparar disponibilidad de botones
+      const mel1Disponible = cursoMel1.estadoBtn === true;
+      const mel2Disponible = cursoMel2.botonEstado === "Habilitado";
+
+      if (mel1Disponible === mel2Disponible) {
+        const estado = mel1Disponible ? "disponible" : "no disponible";
+        resultado.coincidencias.push(
+          `${codigo}: Estado botón ${estado} en ambos`
+        );
+      } else {
+        const estadoMel1 = mel1Disponible ? "disponible" : "no disponible";
+        const estadoMel2 = mel2Disponible ? "disponible" : "no disponible";
+        resultado.diferenciasCriticas.push(
+          `${codigo}: Estado botón - MEL1: ${estadoMel1}, MEL2: ${estadoMel2}`
+        );
+      }
+
+      // Comparar información adicional (nroInscripcion vs historial de desaprobación)
+      const infoMel1 = cursoMel1.nroInscripcion || "";
+      const infoMel2 = cursoMel2.nroInscripcion || "";
+
+      if (infoMel2.includes("vez desaprobado") && infoMel1 !== "") {
+        resultado.diferenciasMenures.push(
+          `${codigo}: MEL2 muestra historial desaprobación ("${infoMel2}"), MEL1 muestra "${infoMel1}"`
+        );
+      } else if (infoMel1 === infoMel2) {
+        resultado.coincidencias.push(
+          `${codigo}: Información adicional idéntica`
+        );
+      }
+    }
+  }
+
+  return resultado;
+}
+
+// 🔍 FUNCIÓN AUXILIAR PARA CALCULAR SIMILITUD DE TEXTO
+function calcularSimilitudTexto(texto1: string, texto2: string): number {
+  if (texto1 === texto2) return 1.0;
+
+  const len1 = texto1.length;
+  const len2 = texto2.length;
+
+  if (len1 === 0 || len2 === 0) return 0.0;
+
+  // Algoritmo de distancia de Levenshtein simplificado
+  const matriz: number[][] = [];
+
+  for (let i = 0; i <= len1; i++) {
+    matriz[i] = [];
+    matriz[i][0] = i;
+  }
+
+  for (let j = 0; j <= len2; j++) {
+    matriz[0][j] = j;
+  }
+
+  for (let i = 1; i <= len1; i++) {
+    for (let j = 1; j <= len2; j++) {
+      const costo = texto1[i - 1] === texto2[j - 1] ? 0 : 1;
+      matriz[i][j] = Math.min(
+        matriz[i - 1][j] + 1, // eliminación
+        matriz[i][j - 1] + 1, // inserción
+        matriz[i - 1][j - 1] + costo // sustitución
+      );
+    }
+  }
+
+  const distancia = matriz[len1][len2];
+  const longitudMaxima = Math.max(len1, len2);
+
+  return 1 - distancia / longitudMaxima;
 }
 
 // Función para procesar código en MEL1 (usando la lógica existente)
 async function procesarCodigoEnMel1(page: any, codigo: string, index: number) {
-  // 1️⃣ LLENAR INPUT Y CONFIGURAR LISTENER
   const codigoInput = "#txtCodigoAlumnoSimulacion";
   await page.waitForSelector(codigoInput, { timeout: 20000 });
   await page.fill(codigoInput, "");
@@ -371,58 +663,82 @@ async function procesarCodigoEnMel1(page: any, codigo: string, index: number) {
   let alertDetectado = false;
   let mensajeAlert = "";
   let screenshot = "";
-
-  const dialogHandler = async (dialog: any) => {
-    const message = dialog.message();
-    alertDetectado = true;
-    mensajeAlert = message;
-
-    // Capturar screenshot
-    const alertScreenshot = path.join(
-      path.resolve("evidence"),
-      `mel1-${codigo}-alert-${Date.now()}.png`
-    );
-    await page.screenshot({ path: alertScreenshot, fullPage: true });
-    screenshot = alertScreenshot;
-
-    await dialog.accept();
-    sendLog("mel1", `🚨 Alert MEL1 ${codigo}: ${message.substring(0, 50)}...`);
-  };
-
-  page.on("dialog", dialogHandler);
-
-  // 2️⃣ HACER CLICK EN SIMULAR
-  const btnSimular = "#btnSimular";
-  await page.waitForSelector(btnSimular, { timeout: 20000 });
-  await page.click(btnSimular);
-  await page.waitForTimeout(3000);
-
-  let cursos = [];
+  let cursos: any[] = [];
   let modales: string[] = [];
 
-  // 3️⃣ SI NO HAY ALERT, VERIFICAR MATRÍCULA
-  if (!alertDetectado) {
+  const btnSimular = "#btnSimular";
+  await page.waitForSelector(btnSimular, { timeout: 20000 });
+
+  // Preparar listeners en carrera (misma página y posible popup)
+  const dialogSamePagePromise = page
+    .waitForEvent("dialog", { timeout: 8000 })
+    .catch(() => null);
+  const popupPromise = page
+    .context()
+    .waitForEvent("page", { timeout: 8000 })
+    .catch(() => null);
+
+  // Click que dispara la validación/alert
+  await page.click(btnSimular);
+
+  // Resolver qué pasó: alert en misma página o en popup
+  let dlg = await dialogSamePagePromise;
+  const popupPage = await popupPromise;
+  if (!dlg && popupPage) {
+    // Si se abrió una nueva pestaña, intenta capturar su alert
+    dlg = await popupPage
+      .waitForEvent("dialog", { timeout: 2000 })
+      .catch(() => null);
+  }
+
+  if (dlg) {
+    alertDetectado = true;
+    mensajeAlert = dlg.message();
+
+    // ⚠️ Primero ACEPTA el alert (no se puede hacer screenshot con el diálogo abierto)
+    await dlg.accept().catch(() => {});
+
+    // Pequeña espera para estabilizar el DOM y luego screenshot de evidencia
+    await page.waitForTimeout(200);
+
+    const alertScreenshot = path.join(
+      path.resolve("evidence"),
+      `mel1-${codigo}-alert-evidencia-${Date.now()}.png`
+    );
+    try {
+      await page.screenshot({ path: alertScreenshot, fullPage: true });
+      screenshot = alertScreenshot;
+    } catch {
+      // Si fallara por navegación, intenta una segunda vez sin fullPage
+      try {
+        await page.screenshot({ path: alertScreenshot });
+        screenshot = alertScreenshot;
+      } catch {}
+    }
+
+    sendLog(
+      "mel1",
+      `🚨 Alert MEL1 ${codigo}: ${mensajeAlert.substring(0, 120)}...`
+    );
+  } else {
+    // No hubo alert nativo: continuar con el flujo de matrícula
+    await page.waitForTimeout(3000);
+
     const matriculaResult = await procesarMatriculaMel1(page, codigo);
     cursos = matriculaResult.cursos;
     modales = matriculaResult.modales;
 
     // Cerrar sesión para volver al inicio
-    await page.goto(
-      `https://melvisor.utp.edu.pe/seguridad/FinalizarSimulacion`
-    );
+    await page
+      .goto(`https://melvisor.utp.edu.pe/seguridad/FinalizarSimulacion`)
+      .catch(() => {});
     await page.waitForTimeout(3000);
-  } else {
-    sendLog("mel1", `🚨 Si Alert MEL1 `);
   }
 
-  page.off("dialog", dialogHandler);
-
   return {
-    alertDetectado,
-    mensajeAlert,
-    screenshot,
-    cursos,
+    alert: { alertDetectado, mensajeAlert },
     modales,
+    cursos,
   };
 }
 
@@ -430,7 +746,7 @@ async function procesarCodigoEnMel1(page: any, codigo: string, index: number) {
 async function procesarCodigoEnMel2(page: any, codigo: string, index: number) {
   try {
     // 1️⃣ NAVEGAR A LA PÁGINA PRINCIPAL DE MEL2 (si es necesario)
-    const currentUrl = page.url();
+    let currentUrl = page.url();
     sendLog("mel2", `📍 URL actual MEL2: ${currentUrl}`);
 
     // 2️⃣ BUSCAR INPUT DE CÓDIGO EN MEL2
@@ -447,8 +763,125 @@ async function procesarCodigoEnMel2(page: any, codigo: string, index: number) {
     await page.click('button:has-text("Simular")');
     sendLog("mel2", `✅ Click en botón Simular realizado para ${codigo}`);
 
-    // 5️⃣ ESPERAR RESPUESTA Y CAPTURAR
+    // 5️⃣ ESPERAR RESPUESTA Y DETECTAR ERROR POR URL
     await page.waitForTimeout(5000);
+
+    // 🚨 VERIFICAR SI LA URL INDICA ERROR
+    currentUrl = page.url();
+    sendLog("mel2", `📍 URL después de simular: ${currentUrl}`);
+
+    if (currentUrl === "https://mel2.utpxpedition.com/error") {
+      sendLog("mel2", `🚨 ERROR DETECTADO - Página de error para ${codigo}`);
+
+      // 📋 EXTRAER TEXTOS DEL DIV DE ERROR
+      const errorInfo = await page.evaluate(() => {
+        // Buscar el div de error específico
+        const errorDiv = document.querySelector(
+          "div.mt-10.flex.h-\\[100\\%\\].max-h-\\[600px\\]"
+        );
+
+        if (errorDiv) {
+          // Extraer todos los textos relevantes
+          const titulo =
+            errorDiv.querySelector("h2")?.textContent?.trim() || "";
+          const mensaje =
+            errorDiv.querySelector("p")?.textContent?.trim() || "";
+          const imagenAlt =
+            errorDiv.querySelector("img")?.getAttribute("alt") || "";
+          const imagenSrc =
+            errorDiv.querySelector("img")?.getAttribute("src") || "";
+
+          // Obtener todo el texto del div como backup
+          const textoCompleto = errorDiv.textContent?.trim() || "";
+
+          return {
+            titulo,
+            mensaje,
+            imagenAlt,
+            imagenSrc,
+            textoCompleto,
+          };
+        }
+
+        // Si no encuentra el div específico, extraer cualquier texto visible
+        const bodyText = document.body.textContent?.trim() || "";
+
+        return {
+          titulo: "Error no estructurado",
+          mensaje: bodyText.substring(0, 200) + "...",
+          imagenAlt: "",
+          imagenSrc: "",
+          textoCompleto: bodyText,
+        };
+      });
+
+      // 📊 MOSTRAR INFORMACIÓN DEL ERROR
+      sendLog("mel2", `   📋 Título: ${errorInfo.titulo}`);
+      sendLog("mel2", `   💬 Mensaje: ${errorInfo.mensaje}`);
+      sendLog(
+        "mel2",
+        `   🖼️ Imagen: ${errorInfo.imagenAlt} (${errorInfo.imagenSrc})`
+      );
+
+      // 📸 CAPTURAR SCREENSHOT DEL ERROR
+      const errorScreenshot = path.join(
+        path.resolve("evidence"),
+        `mel2-${codigo}-ERROR-${Date.now()}.png`
+      );
+      await page.screenshot({ path: errorScreenshot, fullPage: true });
+      sendLog("mel2", `📸 Screenshot de error: ${errorScreenshot}`);
+
+      // 🔄 INTENTAR VOLVER AL INICIO
+      try {
+        sendLog(
+          "mel2",
+          `🔄 Intentando volver al inicio desde página de error...`
+        );
+
+        // Navegar de vuelta a la página principal
+        await page.goto("https://mel2.utpxpedition.com/", {
+          waitUntil: "networkidle",
+          timeout: 10000,
+        });
+
+        sendLog(
+          "mel2",
+          `✅ Navegación de vuelta al inicio exitosa para ${codigo}`
+        );
+        await page.waitForTimeout(3000);
+      } catch (navegacionError) {
+        sendLog(
+          "mel2",
+          `❌ Error navegando de vuelta al inicio: ${navegacionError}`
+        );
+      }
+
+      // 🎯 RETORNAR RESULTADO DE ERROR (NO CONTINUAR)
+      return {
+        alert: { alertDetectado: true, mensajeAlert: errorInfo.mensaje },
+        modales: [],
+        cursos: [],
+      };
+      // return {
+      //   error: true,
+      //   tipoError: "Página de error del sistema",
+      //   url: currentUrl,
+      //   errorInfo: errorInfo,
+      //   screenshot: errorScreenshot,
+      //   datos: {
+      //     cursos: [],
+      //     totalCursos: 0,
+      //     cursosHabilitados: 0,
+      //     cursosDeshabilitados: 0,
+      //   },
+      // };
+    }
+
+    // ✅ SI NO HAY ERROR, CONTINUAR NORMALMENTE
+    sendLog(
+      "mel2",
+      `✅ URL válida para ${codigo} - continuando procesamiento...`
+    );
 
     const resultScreenshot = path.join(
       path.resolve("evidence"),
@@ -456,21 +889,25 @@ async function procesarCodigoEnMel2(page: any, codigo: string, index: number) {
     );
     await page.screenshot({ path: resultScreenshot, fullPage: true });
 
-    // 6️⃣ PROCESAR MATRÍCULA EN MEL2
+    // 6️⃣ PROCESAR MATRÍCULA EN MEL2 (solo si no hay error)
     const matriculaResult = await procesarMatriculaMel2(page, codigo);
 
-    sendLog(
-      "mel2",
-      `📊 Datos extraídos de MEL2 para ${codigo}: ${JSON.stringify(
-        matriculaResult
-      )}`
-    );
-
+    // sendLog(
+    //   "mel2",
+    //   `📊 Datos extraídos de MEL2 para ${codigo}: ${JSON.stringify(
+    //     matriculaResult
+    //   )}`
+    // );
     return {
-      screenshot: resultScreenshot,
-      datos: matriculaResult,
-      url: currentUrl,
+      alert: { alertDetectado: false, mensajeAlert: "" },
+      modales: matriculaResult.modales,
+      cursos: matriculaResult.cursos,
     };
+    // return {
+    //   screenshot: resultScreenshot,
+    //   datos: matriculaResult,
+    //   url: currentUrl,
+    // };
   } catch (error) {
     throw error;
   }
@@ -489,13 +926,13 @@ async function procesarMatriculaMel1(page: any, codigo: string) {
     await page.click(
       '#myModalInit1 button.btn.btn-danger[data-dismiss="modal"]'
     );
-    modales.push("Modal Tips");
+    modales.push("Modal Comunicado");
   } catch {}
 
   try {
     await page.waitForSelector("a.introjs-skipbutton", { timeout: 3000 });
     await page.click("a.introjs-skipbutton");
-    modales.push("Modal Tutorial");
+    modales.push("Modal Guia");
   } catch {}
 
   // Extraer cursos
@@ -511,11 +948,20 @@ async function procesarMatriculaMel1(page: any, codigo: string) {
         const match = cursoCompleto.match(/^([A-Z0-9]+)\s*-\s*(.+)$/);
 
         if (match) {
+          const btnAgregar = fila.querySelector(
+            'a.loadDetalleCurso.btn.btn-success[data-action="Agregar"]'
+          );
+          const estadoBtn = btnAgregar !== null;
           cursosArray.push({
             codigo: match[1].trim(),
             nombre: match[2].trim(),
+            horasSemanales: celdas[1]?.textContent?.trim() || "",
             creditos: celdas[2]?.textContent?.trim() || "",
+            ciclo: celdas[3]?.textContent?.trim() || "",
+            nroInscripcion: celdas[4]?.textContent?.trim() || "",
             tipo: celdas[5]?.textContent?.trim() || "",
+            seccion: celdas[6]?.textContent?.trim() || "",
+            estadoBtn,
           });
         }
       }
@@ -538,6 +984,7 @@ async function procesarMatriculaMel1(page: any, codigo: string) {
 
 async function procesarMatriculaMel2(page: any, codigo: string) {
   await page.waitForTimeout(5000);
+  const modales: string[] = [];
   sendLog("mel2", `🔍 Procesando matrícula MEL2 para ${codigo}...`);
 
   // 1️⃣ CERRAR MODAL "ENTENDIDO"
@@ -555,6 +1002,7 @@ async function procesarMatriculaMel2(page: any, codigo: string) {
       'dialog[data-open="true"] header button[aria-label="Close modal"]'
     );
     sendLog("mel2", `✅ Modal cerrado con botón X para ${codigo}`);
+    modales.push("Modal Comunicado");
   } catch (modalError) {
     sendLog(
       "mel2",
@@ -577,7 +1025,7 @@ async function procesarMatriculaMel2(page: any, codigo: string) {
       'footer[data-testid="modal-footer"] button:has-text("Omitir")'
     );
     sendLog("mel2", `✅ Botón "Omitir" clickeado para ${codigo}`);
-
+    modales.push("Modal Guia");
     await page.waitForTimeout(2000); // Pausa después de omitir
   } catch (omitirError) {
     sendLog(
@@ -618,8 +1066,8 @@ async function procesarMatriculaMel2(page: any, codigo: string) {
 
           // Verificar si el botón "Agregar" está habilitado
           const btnAgregar = celdas[6]?.querySelector("button");
-          const isDisabled = btnAgregar?.hasAttribute("disabled") || false;
-          const btnEstado = isDisabled ? "Deshabilitado" : "Habilitado";
+          const estadoBtn = !btnAgregar?.hasAttribute("disabled"); // true si NO está deshabilitado
+          const botonEstado = estadoBtn ? "Habilitado" : "Deshabilitado";
 
           // Extraer código y nombre del formato "CÓDIGO - NOMBRE"
           const match = cursoCompleto.match(/^([A-Z0-9]+)\s*-\s*(.+)$/);
@@ -634,12 +1082,11 @@ async function procesarMatriculaMel2(page: any, codigo: string) {
               horasSemanales,
               creditos,
               ciclo,
+              nroInscripcion: alertMessage,
               tipo,
               seccion,
-              cursoCompleto,
-              alertMessage,
-              botonEstado: btnEstado,
-              index: index + 1,
+              estadoBtn,
+              botonEstado,
             });
           }
         }
@@ -655,18 +1102,6 @@ async function procesarMatriculaMel2(page: any, codigo: string) {
     "mel2",
     `📚 ${cursosExtraidos.length} cursos encontrados en MEL2 para ${codigo}`
   );
-
-  cursosExtraidos.forEach((curso: any, idx: number) => {
-    const alert = curso.alertMessage ? ` [${curso.alertMessage}]` : "";
-    const estado =
-      curso.botonEstado === "Deshabilitado" ? " [DESHABILITADO]" : "";
-    sendLog(
-      "mel2",
-      `  ${idx + 1}. ${curso.codigo} - ${curso.nombre} (${
-        curso.creditos
-      } créditos, ${curso.tipo})${alert}${estado}`
-    );
-  });
 
   // 4️⃣ HACER CLICK EN EL PRIMER BOTÓN "AGREGAR" DISPONIBLE
   if (cursosExtraidos.length > 0) {
@@ -767,20 +1202,20 @@ async function procesarMatriculaMel2(page: any, codigo: string) {
   } else {
     sendLog("mel2", `⚠️ No hay cursos disponibles para agregar en ${codigo}`);
   }
-
-  return {
-    modalCerrado: true,
-    datos: {
-      cursos: cursosExtraidos,
-      totalCursos: cursosExtraidos.length,
-      cursosHabilitados: cursosExtraidos.filter(
-        (c: any) => c.botonEstado === "Habilitado"
-      ).length,
-      cursosDeshabilitados: cursosExtraidos.filter(
-        (c: any) => c.botonEstado === "Deshabilitado"
-      ).length,
-    },
-  };
+  return { modales, cursos: cursosExtraidos };
+  // return {
+  //   modalCerrado: true,
+  //   datos: {
+  //     cursos: cursosExtraidos,
+  //     totalCursos: cursosExtraidos.length,
+  //     cursosHabilitados: cursosExtraidos.filter(
+  //       (c: any) => c.botonEstado === "Habilitado"
+  //     ).length,
+  //     cursosDeshabilitados: cursosExtraidos.filter(
+  //       (c: any) => c.botonEstado === "Deshabilitado"
+  //     ).length,
+  //   },
+  // };
 }
 
 // Función para cerrar todas las sesiones
